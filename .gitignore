@@ -1,0 +1,48 @@
+# Python 캐시
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 가상환경
+.venv/
+venv/
+ENV/
+env/
+*.env
+
+# IDE 설정 (VSCode, PyCharm 등)
+.vscode/
+.idea/
+
+# OS 자동 생성 파일
+.DS_Store
+Thumbs.db
+
+# 로그 및 임시 파일
+*.log
+*.tmp
+*.swp
+
+# 테스트/커버리지
+htmlcov/
+.tox/
+.coverage
+coverage.xml
+.cache/
+.pytest_cache/
+
+# 빌드 결과물
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Jupyter Notebook 체크포인트
+.ipynb_checkpoints/
+
+# 환경변수 파일 (보안)
+.env
+.env.*
+
+# 파이썬 프로젝트 설정 (선택적 무시)
+pip-wheel-metadata/
