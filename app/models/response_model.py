@@ -3,7 +3,7 @@ from typing import Optional
 
 class SummaryOutput(BaseModel):
     summary: str = Field(..., description="the summarized text")
-    length: str = Field(..., description="summarization length option")
+    length: str = Field(..., description="summarization length option")  # 예: short/medium/long
     input_length: Optional[int] = Field(
         None,
         description="original input text length"
@@ -20,3 +20,7 @@ class SummaryOutput(BaseModel):
         default=None,
         description="API caller role: admin or user"
     )
+    style_prompt: Optional[str] = Field(
+        None,
+        description="The style prompt used for summarization (used for debugging and traceability)"
+    )  # 추가된 필드

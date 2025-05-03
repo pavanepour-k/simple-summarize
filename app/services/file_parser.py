@@ -1,6 +1,8 @@
-from fastapi import UploadFile, HTTPException
-import fitz  # PyMuPDF
+from fastapi import UploadFile
+from app.utils.error_handler import raise_http_exception
+import fitz
 import docx
+from io import BytesIO
 
 async def extract_text_from_file(file: UploadFile) -> str:
     try:
@@ -10,29 +12,20 @@ async def extract_text_from_file(file: UploadFile) -> str:
         elif file.filename.endswith(".docx"):
             return extract_from_docx(contents)
         else:
-            raise ValueError("Unsupported file type. Supported types: .pdf, .docx")
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail={"error": f"File type error: {str(e)}"})
+            raise ValueError("Unsupported file type (.pdf, .docx only)")
     except Exception as e:
-        raise HTTPException(status_code=400, detail={"error": f"Error while processing the file: {str(e)}"})
+        raise_http_exception(f"File processing error: {str(e)}")
 
 def extract_from_pdf(file_bytes: bytes) -> str:
-    text = ""
     try:
         with fitz.open(stream=file_bytes, filetype="pdf") as doc:
-            for page in doc:
-                text += page.get_text()
+            return "".join(page.get_text() for page in doc)
     except Exception as e:
-        raise HTTPException(status_code=400, detail={"error": f"Error while extracting PDF text: {str(e)}"})
-    return text
+        raise_http_exception(f"PDF extraction failed: {str(e)}")
 
 def extract_from_docx(file_bytes: bytes) -> str:
-    from io import BytesIO
-    text = ""
     try:
         doc = docx.Document(BytesIO(file_bytes))
-        for para in doc.paragraphs:
-            text += para.text + "\n"
+        return "\n".join(para.text for para in doc.paragraphs)
     except Exception as e:
-        raise HTTPException(status_code=400, detail={"error": f"Error while extracting DOCX text: {str(e)}"})
-    return text
+        raise_http_exception(f"DOCX extraction failed: {str(e)}")
