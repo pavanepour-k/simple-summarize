@@ -10,5 +10,13 @@ class SummaryOutput(BaseModel):
     )
     language: Optional[str] = Field(
         None,
-        description="detected language code"
+        description="Detected language code (e.g., en, ko, ja)"
+    )
+    style: Optional[str] = Field(
+        None,
+        description="applied summary style (general, problem_solver, or emotion_focused)"
+    )
+    role: Optional[str] = Field(
+        default=None,
+        description="API caller role: admin or user"
     )
