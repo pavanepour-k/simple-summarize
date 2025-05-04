@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+import os
 
 class SummaryOutput(BaseModel):
     summary: str = Field(..., description="the summarized text")
@@ -23,4 +24,10 @@ class SummaryOutput(BaseModel):
     style_prompt: Optional[str] = Field(
         None,
         description="The style prompt used for summarization (used for debugging and traceability)"
-    )  # 추가된 필드
+    )  # 디버깅용 필드
+
+    @classmethod
+    def create(cls, **kwargs):
+        if not os.getenv("DEBUG_MODE", "false").lower() == "true":
+            kwargs.pop("style_prompt", None)  # 디버깅 모드가 아니면 style_prompt를 제외
+        return super().create(**kwargs)

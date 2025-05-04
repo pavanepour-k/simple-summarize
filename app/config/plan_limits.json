@@ -1,0 +1,17 @@
+{
+    "user": {
+        "free": 1000,
+        "pro": 5000,
+        "enterprise": 10000
+    },
+    "pro": {
+        "free": 1000,
+        "pro": 10000,
+        "enterprise": 20000
+    },
+    "admin": {
+        "free": 1000,
+        "pro": 10000,
+        "enterprise": 50000
+    }
+}
