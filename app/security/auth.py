@@ -1,36 +1,28 @@
-import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.config.settings import settings
+from app.security.user_roles import get_user_role
+from app.utils.jwt_handler import verify_jwt
+from app.utils.error_handler import raise_http_exception
 
 security = HTTPBearer()
-logger = logging.getLogger("uvicorn.error")
 
+# API 키 인증
 def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """
-    API Key 검증. 유효하지 않으면 401 Unauthorized 발생.
-    """
-    if credentials.scheme != "Bearer" or credentials.credentials != settings.API_KEY:
-        logger.warning("Unauthorized access attempt. Invalid token: %s", credentials.credentials)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "Invalid or missing API key"},
-        )
+    api_key = verify_jwt(credentials.credentials)
+    if not api_key:
+        raise_http_exception("Invalid or missing API key", code=status.HTTP_401_UNAUTHORIZED)
+    return api_key
 
-def is_admin() -> bool:
-    """
-    .env의 API_ROLE 환경변수로부터 admin 여부 판단.
-    """
-    return settings.API_ROLE.lower() == "admin"
+# 사용자 인증 (사용자 전용)
+def verify_user_access(api_key: str = Depends(verify_api_key)):
+    role = get_user_role(api_key)
+    if role == "admin":
+        raise_http_exception("Admin cannot access user API", code=status.HTTP_403_FORBIDDEN)
+    return True
 
-def verify_admin(api_key: None = Depends(verify_api_key)):
-    """
-    관리자 전용 기능 접근 권한 검증.
-    관리자 로일이 아닐 경우 403 Forbidden 발생.
-    """
-    if not is_admin():
-        logger.warning("Forbidden: Admin privilege required.")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"error": "Admin privileges required for this operation."},
-        )
+# 관리자 인증
+def verify_admin(api_key: str = Depends(verify_api_key)):
+    role = get_user_role(api_key)
+    if role != "admin":
+        raise_http_exception("Admin privileges required", code=status.HTTP_403_FORBIDDEN)
+    return True
