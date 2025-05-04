@@ -1,10 +1,10 @@
+import redis
 import asyncio
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List
 from pydantic import BaseModel
 from app.config.settings import settings
-import aioredis
 import time
 
 # 설정값 기반 로그 제한 및 배치 처리 최적화
@@ -35,13 +35,14 @@ class SummaryAnalytics:
             cls._instance = cls()
         return cls._instance
 
-    async def _initialize_redis(self):
+    def _initialize_redis(self):
         """Redis 클라이언트 초기화"""
         if not self.redis_client:
-            self.redis_client = await aioredis.create_redis_pool(
-                ('localhost', 6379),
+            self.redis_client = redis.StrictRedis(
+                host='localhost',
+                port=6379,
                 db=0,
-                encoding='utf-8'
+                decode_responses=True
             )
 
     async def _process_batch(self):
@@ -66,18 +67,19 @@ class SummaryAnalytics:
                     if len(self.log_history) > MAX_LOG_ENTRIES:
                         self.log_history.pop(0)
 
-    async def _save_logs_to_redis(self, logs: List[LogEntry]):
+    def _save_logs_to_redis(self, logs: List[LogEntry]):
         """Redis에 배치 로그 저장"""
         if not self.redis_client:
-            await self._initialize_redis()
+            self._initialize_redis()
 
         try:
+            # Redis 파이프라인을 사용하여 배치로 처리
             pipe = self.redis_client.pipeline()
             for log in logs:
                 log_data = log.dict()
                 # Redis에 로그 저장 (채널 이름으로 logs 사용)
                 pipe.lpush("logs", str(log_data))
-            await pipe.execute()
+            pipe.execute()
         except Exception as e:
             logger.error(f"Failed to save logs to Redis: {str(e)}")
             # Redis 장애 시 로컬 저장소로 로그 저장 (대체 처리)

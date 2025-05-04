@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from dotenv import load_dotenv
 import logging
 import os
-from app.api.summarize_router import router as summarize_router
+from app.api.summarize_router import user_router
 from app.api.admin_router import admin_router  # admin_router 임포트
 from app.config.settings import settings
 
@@ -47,6 +47,6 @@ async def limit_file_size(request: Request, call_next):
     return response
 
 # 요약 라우터 등록
-app.include_router(summarize_router, prefix="/summarize", tags=["Summarization"])
+app.include_router(user_router, prefix="/summarize", tags=["Summarization"])
 # 관리자 라우터 등록
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])

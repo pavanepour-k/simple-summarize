@@ -1,4 +1,5 @@
 from app.models.response_model import SummaryOutput
+from app.models.request_model import SummaryStyle, SummaryOption
 from app.config.plan_config import PlanConfigService  # 모델 경로를 가져오는 서비스
 import os
 
@@ -35,10 +36,10 @@ class SummarizerService:
         max_len = length_mapping[option]
         result = model(routed_content, max_length=max_len, min_length=20, do_sample=False)
         
-        summary_text = result[0].get("summary_text") or result[0].get("generated_text", "")
+        summarize_text = result[0].get("summarize_text") or result[0].get("generated_text", "")
 
         response = SummaryOutput(
-            summary=summary_text,
+            summary=summarize_text,
             length=option.value,
             input_length=len(content),
             language=self.lang,

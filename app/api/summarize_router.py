@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Depends, Query, HTTPException, status
 from app.models.request_model import SummaryOption, SummaryStyle, TextInput
 from app.models.response_model import SummaryOutput
-from app.services.summarizer import summarize_text, detect_language
+from app.services.summarizer import SummarizerService  # SummarizerService 임포트
 from app.services.file_parser import extract_text_from_file
 from app.security.auth import verify_api_key, verify_user_access, verify_admin
 from app.security.user_roles import get_user_role
@@ -31,7 +31,8 @@ async def summarize_text_input(
     _: bool = Depends(verify_user_access),  # 사용자 인증
     api_key: str = Depends(verify_api_key)
 ):
-    return await _validate_and_summarize(data.content, data.option, data.style, api_key)
+    summarizer = SummarizerService()  # SummarizerService 인스턴스화
+    return await _validate_and_summarize(data.content, data.option, data.style, api_key, summarizer)
 
 # 파일 업로드로 요약 처리
 @user_router.post(
@@ -59,10 +60,25 @@ async def summarize_uploaded_file(
             detail="파일에서 텍스트를 추출하는 데 실패했습니다. 파일이 손상되었거나 형식이 잘못되었을 수 있습니다."
         )
 
-    return await _validate_and_summarize(text, option, style, api_key)
+    summarizer = SummarizerService()  # SummarizerService 인스턴스화
+    return await _validate_and_summarize(text, option, style, api_key, summarizer)
 
 # 관리자 전용 라우터에서만 접근 가능
 @admin_router.get("/admin-stats", summary="관리자 전용 시스템 통계")
 async def admin_stats():
     # 관리자 전용 통계 로직 (비동기 처리)
     return {"message": "관리자 전용 통계"}
+
+# 텍스트 요약 수행을 위한 검증 및 요약 로직 (공통 함수)
+async def _validate_and_summarize(content: str, option: SummaryOption, style: SummaryStyle, api_key: str, summarizer: SummarizerService):
+    # 여기서는 API Key, 사용자 권한, 호출 한도 등을 검증하고 요약을 처리
+    # 예시로 요약을 위한 기본 로직을 SummarizerService의 인스턴스를 사용하여 처리
+    try:
+        summary = summarizer.summarize(content, option, style)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"요약 중 오류 발생: {str(e)}")
+
+    # 기록하기: 요약 사용에 대한 기록 (필요시)
+    record_summary_usage(api_key)
+
+    return summary
