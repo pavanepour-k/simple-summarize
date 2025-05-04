@@ -22,7 +22,7 @@ class RedisClient:
         return cls._instance
 
     async def _initialize_redis(self):
-        """Redis 클라이언트 초기화"""
+        """Redis 클라이언트 초기화 (메모리 정책 포함)"""
         try:
             self._redis_pool = redis.from_url(
                 f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}",
@@ -30,7 +30,12 @@ class RedisClient:
                 minsize=5,  # 최소 연결 수
                 maxsize=20,  # 최대 연결 수 (성능 테스트 후 최적화)
                 timeout=10,  # 연결 타임아웃 설정
+                retry_on_timeout=True,  # 타임아웃 시 재시도
+                health_check_interval=60,  # 연결 상태 점검 간격 (초)
+                max_connections=100,  # 최대 연결 수 (설정)
             )
+            # 메모리 관리 정책 설정 (e.g., volatile-lru, allkeys-lru)
+            await self.execute('CONFIG SET', 'maxmemory-policy', 'allkeys-lru')
         except Exception as e:
             raise_http_exception(f"Failed to connect to Redis: {str(e)}")
 
@@ -61,3 +66,4 @@ class RedisClient:
                 if attempt >= retries:
                     raise_http_exception(f"Redis command failed after {retries} retries: {str(e)}")
                 await asyncio.sleep(delay ** attempt)  # 지수 백오프
+

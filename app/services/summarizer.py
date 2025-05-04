@@ -1,11 +1,11 @@
 from app.models.response_model import SummaryOutput
-from app.config.plan_config import get_model_for_language  # 모델 경로는 plan_config에서 가져옵니다
+from app.config.plan_config import PlanConfigService  # 모델 경로를 가져오는 서비스
 import os
 
-# 서비스 계층으로 비즈니스 로직 분리
 class SummarizerService:
-    def __init__(self, lang: str = None):
+    def __init__(self, lang: str = None, plan_config_service: PlanConfigService = None):
         self.lang = lang
+        self.plan_config_service = plan_config_service or PlanConfigService()
 
     def _route_content(self, content: str) -> str:
         # 언어에 맞는 내용 라우팅
@@ -45,12 +45,39 @@ class SummarizerService:
             style=style.value,
         )
 
+        # 디버깅 모드일 경우에만 style_prompt 필드를 포함
         if os.getenv("DEBUG_MODE", "false").lower() == "true":
-            response.style_prompt = style_prompt  # 디버깅 모드일 경우에만 style_prompt 필드를 포함
+            response.style_prompt = style_prompt
         
         return response
 
-# summarize_text 함수는 SummarizerService로 대체됩니다.
-def summarize_text(content: str, option: SummaryOption, style: SummaryStyle = SummaryStyle.general, lang: str = None) -> SummaryOutput:
-    summarizer_service = SummarizerService(lang)
-    return summarizer_service.summarize(content, option, style)
+
+class PlanConfigService:
+    def __init__(self):
+        self.model_paths = self._load_model_paths()
+
+    def _load_model_paths(self) -> dict:
+        """모델 경로를 설정 파일에서 로드하는 함수"""
+        try:
+            with open("config/models.json", 'r') as file:
+                return json.load(file)
+        except Exception as e:
+            raise Exception(f"Failed to load model paths from config file: {str(e)}")
+
+    def get_model_for_language(self, lang: str) -> str:
+        """언어에 해당하는 모델 경로를 반환"""
+        return self.model_paths.get(lang, self.model_paths["en"])  # 기본값으로 영어 모델을 반환
+
+    def get_time_based_limit(self, role: str, plan: str, hour: int) -> int:
+        """시간대에 따른 API 호출 제한"""
+        time_limits = {
+            "user": {
+                0: 50, 6: 200, 12: 300, 18: 150,
+            },
+            "pro": {
+                0: 100, 6: 500, 12: 1000, 18: 800,
+            }
+        }
+        role = role.lower()
+        plan = plan.lower()
+        return time_limits.get(role, {}).get(hour, 100)  # 기본값 100개 제한

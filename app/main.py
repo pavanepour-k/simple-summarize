@@ -11,7 +11,7 @@ load_dotenv()
 
 # 환경 설정에서 파일 크기 제한을 MB 단위로 읽고, 바이트 단위로 변환
 def get_max_file_size() -> int:
-    # 환경에 따라 다른 값 로드 가능 (기본값: 10MB)
+    # .env 파일에서 MAX_FILE_SIZE_MB 값을 읽어옵니다. 기본값은 10MB로 설정
     max_size_mb = int(os.getenv("MAX_FILE_SIZE_MB", 10))  # 기본값 10MB
     return max_size_mb * 1024 * 1024  # MB를 바이트로 변환
 
@@ -31,10 +31,13 @@ logger = logging.getLogger(__name__)
 # 업로드 파일 크기 제한 미들웨어
 @app.middleware("http")
 async def limit_file_size(request: Request, call_next):
+    # POST 요청에 대해 파일 크기 제한을 검사합니다.
     if request.method == "POST" and "Content-Type" in request.headers:
         content_type = request.headers["Content-Type"]
+        # multipart/form-data (파일 업로드 형식)일 경우에만 처리
         if "multipart/form-data" in content_type:
             content_length = int(request.headers.get("Content-Length", 0))
+            # 파일 크기 제한을 초과하면 413 상태 코드와 함께 오류 메시지를 반환
             if content_length > MAX_FILE_SIZE:
                 raise HTTPException(
                     status_code=413,

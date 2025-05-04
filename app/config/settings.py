@@ -8,7 +8,8 @@ class Settings(BaseSettings):
     DEBUG_MODE: bool = True
     API_ROLE: str = "user"  # 기본값 user, .env의 API_ROLE로 덮어쓰기
     API_KEY: str = Field(..., env="API_KEY")  # .env에서 로드할 API_KEY
-    
+    SECRET_KEY: str = Field(..., env="SECRET_KEY")  # .env에서 로드할 SECRET_KEY
+
     # Redis 관련 설정 (필요한 경우 추가)
     REDIS_HOST: str = Field(..., env="REDIS_HOST")
     REDIS_PORT: int = Field(..., env="REDIS_PORT")
@@ -17,6 +18,10 @@ class Settings(BaseSettings):
     REDIS_MAX_CONNECTIONS: int = Field(..., env="REDIS_MAX_CONNECTIONS")
 
     MAX_FILE_SIZE_MB: int = Field(..., env="MAX_FILE_SIZE_MB")
+
+    # 개인 키 및 공개 키를 환경 변수로 로드 (비공개 정보)
+    PRIVATE_KEY: str = Field(..., env="PRIVATE_KEY")
+    PUBLIC_KEY: str = Field(..., env="PUBLIC_KEY")
 
     class Config:
         # .env 파일을 로드하여 환경 변수를 설정

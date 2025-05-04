@@ -48,20 +48,29 @@ async def extract_text_from_file(file: UploadFile) -> str:
         raise_http_exception("File processing error.")
     except Exception as e:
         # 기타 모든 예외 처리
-        raise_http_exception("An unexpected error occurred while processing the file.")
+        raise_http_exception(f"An unexpected error occurred while processing the file: {str(e)}")
 
 # PDF 파일에서 텍스트 추출하는 함수
 def extract_from_pdf(file_bytes: bytes) -> str:
     try:
+        # PDF 형식이 아닌 파일이 전달될 경우 예외 처리
         with fitz.open(stream=file_bytes, filetype="pdf") as doc:
+            if doc.page_count == 0:
+                raise ValueError("The PDF file is empty.")
             return "".join(page.get_text() for page in doc)
+    except ValueError as e:
+        raise_http_exception(f"PDF file error: {str(e)}")
     except Exception as e:
-        raise_http_exception("Failed to extract text from PDF file.")
+        raise_http_exception(f"Failed to extract text from PDF file: {str(e)}")
 
 # DOCX 파일에서 텍스트 추출하는 함수
 def extract_from_docx(file_bytes: bytes) -> str:
     try:
         doc = docx.Document(BytesIO(file_bytes))
+        if not doc.paragraphs:
+            raise ValueError("The DOCX file is empty.")
         return "\n".join(para.text for para in doc.paragraphs)
+    except ValueError as e:
+        raise_http_exception(f"DOCX file error: {str(e)}")
     except Exception as e:
-        raise_http_exception("Failed to extract text from DOCX file.")
+        raise_http_exception(f"Failed to extract text from DOCX file: {str(e)}")
