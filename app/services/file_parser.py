@@ -19,7 +19,7 @@ def validate_file_size(file: UploadFile):
         raise_http_exception("File size exceeds the maximum limit.", code=413)
 
 # 파일 형식 검사 함수
-def validate_file_extension(file: UploadFile):
+def validate_file_type(file: UploadFile):
     file_extension = os.path.splitext(file.filename)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
         raise_http_exception("Unsupported file type. Only .pdf and .docx are allowed.", code=415)
