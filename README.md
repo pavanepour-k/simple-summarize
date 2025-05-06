@@ -98,37 +98,48 @@ API_KEY and other sensitive information are managed through the .env file. Ensur
 Important: The .env file should not be publicly accessible. Consider using key management systems (e.g., AWS Secrets Manager, Azure Key Vault) to securely manage sensitive data in production environments.
 
 
+## Open Source Libraries and Licenses Used
 
-## License
+This project utilizes several open-source libraries that are licensed under various open-source licenses. Below is a list of the libraries used and their respective licenses:
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
-### Open Source Libraries and Licenses Used
+- **FastAPI**: MIT License  
+  FastAPI is a modern, fast (high-performance) web framework for building APIs with Python 3.7+ based on standard Python type hints.
 
-Celery: BSD-3-Clause License
+- **Uvicorn**: MIT License  
+  Uvicorn is a lightning-fast ASGI server implementation, using `uvloop` and `httptools`.
 
-FastAPI: MIT License
+- **Pydantic**: MIT License  
+  Pydantic is used for data validation and settings management. It enforces type annotations at runtime.
 
-JWT: MIT License
+- **Pydantic-settings**: MIT License  
+  Pydantic Settings is used to load settings in a structured manner, managing application configurations from environment variables.
 
-langdetect: Apache License 2.0
+- **python-dotenv**: MIT License  
+  python-dotenv reads key-value pairs from a `.env` file and sets them as environment variables.
 
-Pydantic: MIT License
+- **Redis**: MIT License  
+  Redis is an in-memory data structure store, often used as a database, cache, and message broker.
 
-Pydantic-settings: MIT License
+- **PyMuPDF**: GNU Affero General Public License v3.0 (AGPL-3.0)  
+  PyMuPDF is a Python binding for MuPDF, a lightweight PDF, XPS, and eBook viewer.
 
-PyMuPDF: GNU Affero General Public License v3.0 (AGPL-3.0)
+- **python-docx**: MIT License  
+  python-docx is used for creating, modifying, and extracting information from Word documents (.docx).
 
-python-docx: MIT License
+- **python-jose**: MIT License  
+  Python-JOSE is a library for creating and verifying JSON Web Tokens (JWT).
 
-python-dotenv: MIT License
+- **Cryptography**: Apache License 2.0  
+  The cryptography package is used to provide cryptographic recipes and primitives to Python developers.
 
-Redis-py: MIT License
+- **Requests**: Apache License 2.0  
+  Requests is a simple HTTP library for Python, designed to be user-friendly and to handle HTTP requests easily.
 
-transformers: Apache License 2.0
+- **fitz**: PyMuPDF License (part of PyMuPDF)  
+  Fitz is part of the PyMuPDF library, which provides functions for parsing and extracting information from PDFs and other documents.
 
-Uvicorn: MIT License
-
-Pytest: MIT License
+### License Compliance
+This project complies with the licenses of the libraries used, and the full text of the licenses for each of these libraries can be found in the respective library repositories or on their respective PyPI pages.
 
 
 
