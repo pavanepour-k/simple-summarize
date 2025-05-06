@@ -104,23 +104,31 @@ Important: The .env file should not be publicly accessible. Consider using key m
 This project is licensed under the MIT License. See the LICENSE file for more details.
 ### Open Source Libraries and Licenses Used
 
-FastAPI: MIT License
-
-Uvicorn: MIT License
-
-Pydantic: MIT License
-
-Redis-py: MIT License
-
-python-dotenv: MIT License
-
 Celery: BSD-3-Clause License
 
-Pytest: MIT License
+FastAPI: MIT License
 
 JWT: MIT License
 
+langdetect: Apache License 2.0
+
+Pydantic: MIT License
+
 Pydantic-settings: MIT License
+
+PyMuPDF: GNU Affero General Public License v3.0 (AGPL-3.0)
+
+python-docx: MIT License
+
+python-dotenv: MIT License
+
+Redis-py: MIT License
+
+transformers: Apache License 2.0
+
+Uvicorn: MIT License
+
+Pytest: MIT License
 
 
 
