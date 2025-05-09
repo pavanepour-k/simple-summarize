@@ -43,7 +43,7 @@ dist/
 # 환경변수 파일 (보안)
 .env
 .env.*
-
+*.pem
 # 파이썬 프로젝트 설정 (선택적 무시)
 pip-wheel-metadata/
 2.0
