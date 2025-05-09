@@ -1,76 +1,133 @@
+import os
+import logging
+from io import BytesIO
 from fastapi import UploadFile
 from app.utils.error_handler import raise_http_exception
-import fitz
-import docx
-from io import BytesIO
-import os
 from app.config.settings import settings
 
-# 최대 파일 크기 설정 (MB 단위로 .env 파일에서 설정)
-MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", 10))  # 기본값 10MB
-MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024  # 바이트 단위로 변환
+# Setup logging
+logger = logging.getLogger(__name__)
 
-# 허용되는 파일 형식
-ALLOWED_EXTENSIONS = [".pdf", ".docx"]
+# Get maximum file size from settings
+MAX_FILE_SIZE_MB = settings.MAX_FILE_SIZE_MB
+MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024  # Convert MB to bytes
 
-# 파일 크기 검사 함수
-def validate_file_size(file: UploadFile):
-    if file.size > MAX_FILE_SIZE:
-        raise_http_exception("File size exceeds the maximum limit.", code=413)
+# Allowed file extensions
+ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"]
 
-# 파일 형식 검사 함수
-def validate_file_type(file: UploadFile):
-    file_extension = os.path.splitext(file.filename)[1].lower()
+def validate_file_type(filename: str):
+
+    if not filename:
+        raise_http_exception("Filename is required", code=400)
+        
+    file_extension = os.path.splitext(filename)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
-        raise_http_exception("Unsupported file type. Only .pdf and .docx are allowed.", code=415)
+        supported_formats = ", ".join(ALLOWED_EXTENSIONS)
+        raise_http_exception(
+            f"Unsupported file type. Allowed formats: {supported_formats}", 
+            code=415
+        )
 
-# 파일 유효성 검사 함수
+def validate_file_size(file_size: int):
+
+    if file_size > MAX_FILE_SIZE:
+        raise_http_exception(
+            f"File size exceeds the maximum limit of {MAX_FILE_SIZE_MB} MB", 
+            code=413
+        )
+
 async def validate_file(file: UploadFile):
-    validate_file_size(file)  # 파일 크기 검사
-    validate_file_extension(file)  # 파일 형식 검사
 
-# 파일에서 텍스트 추출하는 함수
+    validate_file_type(file.filename)
+    
+    # FastAPI's UploadFile doesn't have a size attribute
+    # Need to read the file to determine its size
+    content = await file.read()
+    file_size = len(content)
+    
+    # Important: Seek back to the beginning after reading
+    await file.seek(0)
+    
+    validate_file_size(file_size)
+    return file_size
+
 async def extract_text_from_file(file: UploadFile) -> str:
     try:
-        await validate_file(file)  # 파일 크기 및 형식 검사
-
+        # Validate file before processing
+        await validate_file(file)
+        
+        # Read file content
         contents = await file.read()
-        # PDF 파일 처리
-        if file.filename.endswith(".pdf"):
+        
+        # Extract text based on file type
+        if file.filename.lower().endswith(".pdf"):
             return extract_from_pdf(contents)
-        # DOCX 파일 처리
-        elif file.filename.endswith(".docx"):
+        elif file.filename.lower().endswith(".docx"):
             return extract_from_docx(contents)
+        elif file.filename.lower().endswith((".txt", ".md")):
+            # Decode plain text files
+            return contents.decode("utf-8", errors="replace")
         else:
-            raise ValueError("Unsupported file type. Only .pdf and .docx are allowed.")
+            raise_http_exception("Unsupported file type", code=415)
+            
     except ValueError as e:
-        # 파일 형식에 대한 예외 처리
-        raise_http_exception("File processing error.")
+        # File format errors
+        logger.error(f"File processing error: {str(e)}")
+        raise_http_exception(f"File processing error: {str(e)}", code=400)
     except Exception as e:
-        # 기타 모든 예외 처리
-        raise_http_exception(f"An unexpected error occurred while processing the file: {str(e)}")
+        # Unexpected errors
+        logger.error(f"Unexpected error processing file: {str(e)}", exc_info=True)
+        raise_http_exception(f"Failed to process file: {str(e)}", code=500)
+    finally:
+        # Reset the file pointer position
+        try:
+            await file.seek(0)
+        except Exception:
+            pass
 
-# PDF 파일에서 텍스트 추출하는 함수
 def extract_from_pdf(file_bytes: bytes) -> str:
+
     try:
-        # PDF 형식이 아닌 파일이 전달될 경우 예외 처리
+        # Import here to avoid loading unless needed
+        import fitz
+        
+        # Parse PDF file
         with fitz.open(stream=file_bytes, filetype="pdf") as doc:
             if doc.page_count == 0:
-                raise ValueError("The PDF file is empty.")
-            return "".join(page.get_text() for page in doc)
-    except ValueError as e:
-        raise_http_exception(f"PDF file error: {str(e)}")
+                raise ValueError("The PDF file is empty or invalid")
+            
+            # Extract text from all pages
+            text = ""
+            for page in doc:
+                text += page.get_text()
+            
+            return text
+    except ImportError:
+        logger.error("PyMuPDF (fitz) library not available")
+        raise_http_exception("PDF processing is not available", code=501)
     except Exception as e:
-        raise_http_exception(f"Failed to extract text from PDF file: {str(e)}")
+        logger.error(f"PDF extraction error: {str(e)}", exc_info=True)
+        raise_http_exception(f"Failed to extract text from PDF: {str(e)}", code=500)
 
-# DOCX 파일에서 텍스트 추출하는 함수
 def extract_from_docx(file_bytes: bytes) -> str:
+
     try:
+        # Import here to avoid loading unless needed
+        import docx
+        
+        # Parse DOCX file
         doc = docx.Document(BytesIO(file_bytes))
+        
         if not doc.paragraphs:
-            raise ValueError("The DOCX file is empty.")
-        return "\n".join(para.text for para in doc.paragraphs)
-    except ValueError as e:
-        raise_http_exception(f"DOCX file error: {str(e)}")
+            raise ValueError("The DOCX file is empty or invalid")
+            
+        # Extract text from all paragraphs
+        text = "\n".join(para.text for para in doc.paragraphs if para.text)
+        
+        return text
+    except ImportError:
+        logger.error("python-docx library not available")
+        raise_http_exception("DOCX processing is not available", code=501)
     except Exception as e:
-        raise_http_exception(f"Failed to extract text from DOCX file: {str(e)}")
+        logger.error(f"DOCX extraction error: {str(e)}", exc_info=True)
+        raise_http_exception(f"Failed to extract text from DOCX: {str(e)}", code=500)
