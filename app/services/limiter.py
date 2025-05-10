@@ -1,51 +1,74 @@
-import asyncio
-from app.config.redis_client import RedisClient
-from app.config.settings import settings
-from app.utils.error_handler import raise_http_exception
-from datetime import datetime
+import logging
+from app.config.config_manager import ConfigManager  # ConfigManager 불러오기
 
-async def increment_request_count(api_key: str, hour: int):
-    try:
-        redis_client = await RedisClient.instance()  # Redis 클라이언트 가져오기
-        # 시간대별 요청 수 증가 (시간별로 요청 수를 관리)
-        await redis_client.retry_command('HINCRBY', f"{api_key}:hourly:{hour}", "count", 1)
-        await redis_client.retry_command('EXPIRE', f"{api_key}:hourly:{hour}", 86400)  # 24시간 유효
-        return await redis_client.execute('HGET', f"{api_key}:hourly:{hour}", "count")  # 현재 요청 수 조회
-    except Exception as e:
-        raise_http_exception(f"Failed to increment request count: {str(e)}", code=500)
+# 로거 초기화
+logger = logging.getLogger(__name__)
 
-async def log_api_call(api_key: str, hour: int):
-    """API 호출 로그를 Redis에 기록합니다."""
-    try:
-        redis_client = await RedisClient.instance()
-        # 호출 로그 저장
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        await redis_client.retry_command('LPUSH', f"{api_key}:call_logs", timestamp)
-        await redis_client.retry_command('LTRIM', f"{api_key}:call_logs", 0, 99)  # 최근 100개 로그만 저장
-    except Exception as e:
-        raise_http_exception(f"Failed to log API call: {str(e)}", code=500)
+class RateLimiter:
+    """속도 제한을 처리하는 클래스"""
+    
+    def __init__(self):
+        """
+        RateLimiter 초기화
+        ConfigManager는 기본적으로 싱글톤 사용
+        """
+        self.config_manager = ConfigManager.instance()
 
-async def check_rate_limit(api_key: str, role: str, plan: str):
-    """API 호출 제한을 체크하고 초과 시 에러를 발생시킵니다."""
-    try:
-        current_hour = datetime.now().hour  # 현재 시간 가져오기
-        limit = get_plan_limit(role, plan)  # 동적으로 호출 제한 값 반환
-        time_based_limit = get_time_based_limit(role, plan, current_hour)  # 시간대별 호출 제한
+    def get_plan_limit(self, role: str, plan: str):
+        """
+        역할과 계획에 대한 제한을 가져옴
+        
+        :param role: 사용자 역할
+        :param plan: 사용자 계획
+        :return: 제한 값
+        """
+        try:
+            # 계획 제한 가져오기
+            limit = self.config_manager.get_plan_limit(role, plan)
+            logger.info(f"'{role}' 역할의 '{plan}' 계획에 대한 제한: {limit}")
+            return limit
+        except KeyError as e:
+            logger.error(f"제한 가져오기 오류: {role}, {plan}, 오류: {e}")
+            raise ValueError("계획 제한을 가져오는 중 오류 발생")
+        except Exception as e:
+            logger.error(f"예상치 못한 오류: {e}")
+            raise
 
-        # 전체 호출 제한을 시간대별 제한과 합산하여 적용
-        limit = min(limit, time_based_limit)
+    def get_time_based_limit(self, role: str, plan: str):
+        """
+        역할과 계획에 대한 시간 기반 제한을 가져옴
+        
+        :param role: 사용자 역할
+        :param plan: 사용자 계획
+        :return: 시간 기반 제한
+        """
+        try:
+            # 시간 기반 제한 가져오기
+            time_limit = self.config_manager.get_time_based_limit(role, plan)
+            logger.info(f"'{role}' 역할의 '{plan}' 계획에 대한 시간 기반 제한: {time_limit}")
+            return time_limit
+        except KeyError as e:
+            logger.error(f"시간 제한 가져오기 오류: {role}, {plan}, 오류: {e}")
+            raise ValueError("시간 기반 제한을 가져오는 중 오류 발생")
+        except Exception as e:
+            logger.error(f"예상치 못한 오류: {e}")
+            raise
 
-        current_count = await increment_request_count(api_key, current_hour)
-        await log_api_call(api_key, current_hour)  # API 호출 로그 기록
-
-        if current_count > limit:
-            raise_http_exception(f"Rate limit exceeded. Current: {current_count}, Limit: {limit}", code=429)
-    except Exception as e:
-        raise_http_exception(f"Rate limit check failed: {str(e)}", code=500)
-
-# 각 요금제 및 역할별 호출 제한 설정
-def get_plan_limit(role: str, plan: str):
-    """PLAN_RATE_LIMIT에서 동적으로 호출 제한 값을 반환합니다."""
-    role = role.lower()
-    plan = plan.lower()
-    return PLAN_RATE_LIMIT.get(role, PLAN_RATE_LIMIT["user"]).get(plan, PLAN_RATE_LIMIT["user"]["free"])
+    def is_within_limit(self, role: str, plan: str, request_count: int, time_elapsed: int):
+        """
+        요청 수와 경과 시간이 제한 내에 있는지 확인
+        
+        :param role: 사용자 역할
+        :param plan: 사용자 계획
+        :param request_count: 요청 수
+        :param time_elapsed: 경과 시간
+        :return: 제한 내 여부 (True/False)
+        """
+        plan_limit = self.get_plan_limit(role, plan)
+        time_limit = self.get_time_based_limit(role, plan)
+        
+        if request_count <= plan_limit and time_elapsed <= time_limit:
+            return True
+        else:
+            logger.warning(f"요청 수 {request_count} 또는 경과 시간 {time_elapsed} 초과")
+            return False
