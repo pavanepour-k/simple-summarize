@@ -84,10 +84,10 @@ app.add_middleware(
 app.include_router(user_router, prefix="/summarize", tags=["Summarization"])
 app.include_router(admin_router)  # Admin 라우터는 이미 prefix 포함
 
-# 헬스 체크 엔드포인트
+# 상태 체크 엔드포인트
 @app.get("/", tags=["Health"])
 async def root():
-    """API 건강 체크 엔드포인트"""
+    """API 상태 체크 엔드포인트"""
     return {"status": "healthy", "api": settings.API_NAME, "version": "1.0"}
 
 # 스타트업 이벤트
