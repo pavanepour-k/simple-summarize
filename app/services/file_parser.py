@@ -15,6 +15,15 @@ MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024  # Convert MB to bytes
 # Allowed file extensions
 ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"]
 
+# 모델 관련 라이브러리 체크
+try:
+    import torch
+    import tensorflow
+    import flax
+except ImportError as e:
+    logger.error(f"모델 관련 라이브러리 누락: {e.name}. 모든 의존성이 설치되었는지 확인해주세요.")
+    raise_http_exception("필수 모델 라이브러리가 누락되었습니다. 설치를 확인해주세요.", code=500)
+
 def validate_file_type(filename: str):
 
     if not filename:

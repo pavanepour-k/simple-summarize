@@ -20,7 +20,7 @@ class TextInput(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "content": "FastAPI를 사용하여 긴 텍스트를 간단히 요약하는 예시입니다.",
                 "option": "medium",

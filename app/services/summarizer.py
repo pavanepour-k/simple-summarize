@@ -1,9 +1,18 @@
-from app.services.model_loader import model_loader  # ModelLoader 싱글톤 인스턴스 불러오기
 import logging
 from fastapi import HTTPException
+from app.services.model_loader import model_loader  # ModelLoader 싱글톤 인스턴스 불러오기
 
 # 로거 초기화
 logger = logging.getLogger(__name__)
+
+# 모델 관련 라이브러리 체크
+try:
+    import torch
+    import tensorflow
+    import flax
+except ImportError as e:
+    logger.error(f"모델 관련 라이브러리 누락: {e.name}. 모든 의존성이 설치되었는지 확인해주세요.")
+    raise HTTPException(status_code=500, detail="필수 모델 라이브러리가 누락되었습니다. 설치를 확인해주세요.")
 
 class SummarizerService:
     """언어별 모델을 사용하여 텍스트 요약을 처리하는 서비스."""
