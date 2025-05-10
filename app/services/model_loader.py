@@ -1,140 +1,58 @@
-import os
 import json
 import logging
+from transformers import pipeline
 from functools import lru_cache
-from typing import Dict, Any, Optional
+import os
 
-# Import transformers conditionally - for actual production use
-try:
-    from transformers import pipeline, PreTrainedModel, PreTrainedTokenizer
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-
-from app.utils.error_handler import raise_http_exception
-
+# 로거 초기화
 logger = logging.getLogger(__name__)
 
 class ModelLoader:
-    """
-    Singleton class for loading and managing NLP models based on language.
+    """언어별 모델을 관리하고 캐싱하는 싱글톤 클래스."""
     
-    This class handles:
-    - Loading model configurations from JSON
-    - Caching loaded models in memory
-    - Providing appropriate models for specific languages
-    """
     _instance = None
-    _models_config: Dict[str, str] = {}
-    _model_cache = {}
+    _model_config = None
     
-    def __new__(cls):
-        """Ensure singleton pattern - only one instance exists"""
+    def __new__(cls, *args, **kwargs):
+        """ModelLoader의 인스턴스가 하나만 존재하도록 보장."""
         if cls._instance is None:
-            cls._instance = super(ModelLoader, cls).__new__(cls)
-            cls._instance._initialize()
+            cls._instance = super().__new__(cls, *args, **kwargs)
+            cls._instance._load_model_config()  # 첫 번째 인스턴스가 생성될 때 모델 설정 로드
         return cls._instance
-    
-    def _initialize(self):
-        """Initialize the model loader by loading configurations"""
-        self._load_model_config()
-    
+
     def _load_model_config(self):
-        """Load model configuration from JSON file"""
+        """`models.json`에서 모델 설정을 로드."""
         try:
-            config_path = os.path.join("app", "config", "models.json")
-            if os.path.exists(config_path):
-                with open(config_path, 'r') as file:
-                    self._models_config = json.load(file)
-                logger.info(f"Loaded model configurations for {len(self._models_config)} languages")
-            else:
-                logger.warning(f"Model config file not found at {config_path}, using defaults")
-                # Default fallback configuration
-                self._models_config = {
-                    "en": "facebook/bart-large-cnn",
-                    "ko": "HeoAI/KoT5-summarization",
-                    "ja": "line-corporation/line-distilbert-ja-summarization"
-                }
+            # 환경변수에서 모델 설정 경로를 불러오고, 없으면 기본 경로 사용
+            config_path = os.getenv("MODEL_CONFIG_PATH", 'app/config/models.json')  
+            with open(config_path, 'r', encoding='utf-8') as f:
+                self._model_config = json.load(f)
+            logger.info("모델 설정을 성공적으로 로드했습니다.")
+        except FileNotFoundError as e:
+            logger.error(f"모델 설정 파일을 찾을 수 없습니다: {e}")
+            raise Exception("모델 설정 파일을 찾을 수 없습니다.")
+        except json.JSONDecodeError as e:
+            logger.error(f"모델 설정 파일을 읽는 중 오류 발생: {e}")
+            raise Exception("모델 설정 파일이 잘못된 JSON 형식입니다.")
         except Exception as e:
-            logger.error(f"Failed to load model configurations: {str(e)}")
-            # Default configuration as fallback
-            self._models_config = {
-                "en": "facebook/bart-large-cnn"
-            }
+            logger.error(f"모델 설정 로딩 실패: {e}")
+            raise Exception("모델 설정 로딩에 실패했습니다.")
     
-    def get_model_path(self, lang: str) -> str:
-        """
-        Get the appropriate model path for a specific language.
-        
-        Args:
-            lang (str): Language code (e.g., 'en', 'ko', 'ja')
-            
-        Returns:
-            str: Model path for the specified language, or default model path for 'en'
-        """
-        model_path = self._models_config.get(lang.lower())
-        if not model_path:
-            logger.warning(f"No model configured for language '{lang}', using English model")
-            model_path = self._models_config.get("en", "facebook/bart-large-cnn")
-        return model_path
-    
-    @lru_cache(maxsize=8)  # Cache up to 8 different language models
+    @lru_cache(maxsize=None)
     def get_pipeline(self, lang: str):
-        """
-        Get or create a summarization pipeline for the specified language.
-        
-        Args:
-            lang (str): Language code (e.g., 'en', 'ko', 'ja')
-            
-        Returns:
-            Pipeline: HuggingFace pipeline object for the specified language
-            
-        Raises:
-            HTTPException: If loading the model fails or transformers is not available
-        """
-        if not TRANSFORMERS_AVAILABLE:
-            logger.error("Transformers library not available for model loading")
-            raise_http_exception(
-                "Model loading service is currently unavailable", 
-                code=503
-            )
-        
-        lang = lang.lower()
-        model_path = self.get_model_path(lang)
+        """요청된 언어에 대한 요약 파이프라인을 반환."""
+        # 지정된 언어에 맞는 모델명을 가져오고, 없으면 'en' 모델로 fallback
+        model_name = self._model_config.get(lang, self._model_config.get('en'))
         
         try:
-            if model_path not in self._model_cache:
-                logger.info(f"Loading model for language '{lang}' from path '{model_path}'")
-                # Create pipeline with device mapping based on availability
-                self._model_cache[model_path] = pipeline(
-                    "summarization", 
-                    model=model_path,
-                    device_map="auto"  # Use CUDA if available, otherwise CPU
-                )
-            return self._model_cache[model_path]
+            # transformers 파이프라인을 사용하여 모델 로드
+            return pipeline("summarization", model=model_name)
         except Exception as e:
-            logger.error(f"Failed to load model for language '{lang}': {str(e)}")
-            raise_http_exception(
-                f"Failed to load summarization model: {str(e)}", 
-                code=500
-            )
+            logger.error(f"모델 {model_name}을(를) 로드하는 중 오류 발생: {e}")
+            # 모델 로딩 실패 시 'en' 모델로 fallback
+            fallback_model_name = self._model_config.get('en')
+            logger.info(f"기본 모델로 fallback: {fallback_model_name}")
+            return pipeline("summarization", model=fallback_model_name)
 
-    def get_supported_languages(self) -> list:
-        """
-        Return a list of all supported language codes.
-        
-        Returns:
-            list: List of language codes supported by the system
-        """
-        return list(self._models_config.keys())
-
-
-# Singleton instance for global use
-def get_model_loader() -> ModelLoader:
-    """
-    Get the singleton instance of ModelLoader.
-    
-    Returns:
-        ModelLoader: Singleton instance
-    """
-    return ModelLoader()
+# ModelLoader의 인스턴스 생성
+model_loader = ModelLoader()
