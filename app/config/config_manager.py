@@ -3,6 +3,10 @@ import json
 import os
 from typing import Dict, Any, Optional
 import logging
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +35,17 @@ class ConfigManager:
     def _load_model_paths(self):
         """Load model paths from configuration file"""
         try:
-            config_file = os.path.join("app", "config", "models.json")
+            config_file = os.getenv("MODEL_PATHS_FILE", "app/config/models.json")
             with open(config_file, 'r') as file:
                 self.model_paths = json.load(file)
+        except FileNotFoundError:
+            logger.error(f"Model paths configuration file not found: {config_file}")
+            # Default model paths as fallback
+            self.model_paths = {
+                "en": "facebook/bart-large-cnn",
+                "ko": "Helsinki-NLP/opus-mt-ko-en",
+                "ja": "sonoisa/t5-base-japanese-summarization",
+            }
         except Exception as e:
             logger.error(f"Failed to load model paths: {str(e)}")
             # Default model paths as fallback
@@ -41,16 +53,22 @@ class ConfigManager:
                 "en": "facebook/bart-large-cnn",
                 "ko": "Helsinki-NLP/opus-mt-ko-en",
                 "ja": "sonoisa/t5-base-japanese-summarization",
-                "fr": "facebook/bart-large-cnn",
-                "de": "facebook/bart-large-cnn"
             }
     
     def _load_plan_limits(self):
         """Load API usage limits by plan"""
         try:
-            config_file = os.path.join("app", "config", "plan_limits.json")
+            config_file = os.getenv("PLAN_LIMITS_FILE", "app/config/plan_limits.json")
             with open(config_file, 'r') as file:
                 self.plan_limits = json.load(file)
+        except FileNotFoundError:
+            logger.error(f"Plan limits configuration file not found: {config_file}")
+            # Default plan limits as fallback
+            self.plan_limits = {
+                "user": {"free": 1000, "pro": 5000, "enterprise": 10000},
+                "pro": {"free": 1000, "pro": 10000, "enterprise": 20000},
+                "admin": {"free": 1000, "pro": 10000, "enterprise": 50000}
+            }
         except Exception as e:
             logger.error(f"Failed to load plan limits: {str(e)}")
             # Default plan limits as fallback
