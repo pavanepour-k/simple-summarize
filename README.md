@@ -205,6 +205,7 @@ API_KEY and other sensitive information are managed through the .env file. Ensur
 
 Important: The .env file should not be publicly accessible. Consider using key management systems (e.g., AWS Secrets Manager, Azure Key Vault) to securely manage sensitive data in production environments.
 
+---
 
 ## Open Source Libraries and Licenses Used
 
@@ -214,7 +215,7 @@ This project utilizes several open-source libraries that are licensed under vari
   FastAPI is a modern, fast (high-performance) web framework for building APIs with Python 3.7+ based on standard Python type hints.
 
 - **Uvicorn**: MIT License  
-  Uvicorn is a lightning-fast ASGI server implementation, using `uvloop` and `httptools`.
+  Uvicorn is a lightning-fast ASGI server implementation, using uvloop and httptools.
 
 - **Pydantic**: MIT License  
   Pydantic is used for data validation and settings management. It enforces type annotations at runtime.
@@ -223,12 +224,12 @@ This project utilizes several open-source libraries that are licensed under vari
   Pydantic Settings is used to load settings in a structured manner, managing application configurations from environment variables.
 
 - **python-dotenv**: MIT License  
-  python-dotenv reads key-value pairs from a `.env` file and sets them as environment variables.
+  python-dotenv reads key-value pairs from a .env file and sets them as environment variables.
 
 - **Redis**: MIT License  
   Redis is an in-memory data structure store, often used as a database, cache, and message broker.
 
-- **PyMuPDF**: GNU Affero General Public License v3.0 (AGPL-3.0)  
+- **PyMuPDF**: Mozilla Public License 2.0 (MPL-2.0)  
   PyMuPDF is a Python binding for MuPDF, a lightweight PDF, XPS, and eBook viewer.
 
 - **python-docx**: MIT License  
@@ -237,20 +238,27 @@ This project utilizes several open-source libraries that are licensed under vari
 - **python-jose**: MIT License  
   Python-JOSE is a library for creating and verifying JSON Web Tokens (JWT).
 
-- **Cryptography**: Apache License 2.0  
+- **Cryptography**: MIT License  
   The cryptography package is used to provide cryptographic recipes and primitives to Python developers.
 
 - **Requests**: Apache License 2.0  
   Requests is a simple HTTP library for Python, designed to be user-friendly and to handle HTTP requests easily.
 
-- **fitz**: PyMuPDF License (part of PyMuPDF)  
-  Fitz is part of the PyMuPDF library, which provides functions for parsing and extracting information from PDFs and other documents.
+- **PyTorch**: BSD-3-Clause License  
+  PyTorch is an open-source machine learning library used for computer vision and natural language processing.
+
+- **TensorFlow**: Apache License 2.0  
+  TensorFlow is an open-source machine learning framework developed by Google, used for a wide range of AI tasks.
+
+- **Flax**: Apache License 2.0  
+  Flax is a high-performance neural network library for JAX, designed to make machine learning research easy to implement.
 
 ### License Compliance
 This project complies with the licenses of the libraries used, and the full text of the licenses for each of these libraries can be found in the respective library repositories or on their respective PyPI pages.
 
 
 
+---
 
 
 ### Deployment Considerations
