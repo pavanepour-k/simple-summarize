@@ -30,7 +30,7 @@ htmlcov/
 coverage.xml
 .cache/
 .pytest_cache/
-
+app/test/*
 # 빌드 결과물
 build/
 dist/

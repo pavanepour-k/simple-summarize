@@ -25,7 +25,7 @@ except ImportError as e:
     raise_http_exception("필수 모델 라이브러리가 누락되었습니다. 설치를 확인해주세요.", code=500)
 
 def validate_file_type(filename: str):
-
+    """파일 형식 검증"""
     if not filename:
         raise_http_exception("Filename is required", code=400)
         
@@ -38,7 +38,7 @@ def validate_file_type(filename: str):
         )
 
 def validate_file_size(file_size: int):
-
+    """파일 크기 검증"""
     if file_size > MAX_FILE_SIZE:
         raise_http_exception(
             f"File size exceeds the maximum limit of {MAX_FILE_SIZE_MB} MB", 
@@ -46,23 +46,21 @@ def validate_file_size(file_size: int):
         )
 
 async def validate_file(file: UploadFile):
-
+    """파일 검증 함수 (크기 및 형식 검증)"""
     validate_file_type(file.filename)
     
     # FastAPI's UploadFile doesn't have a size attribute
-    # Need to read the file to determine its size
     content = await file.read()
     file_size = len(content)
-    
-    # Important: Seek back to the beginning after reading
     await file.seek(0)
     
     validate_file_size(file_size)
     return file_size
 
 async def extract_text_from_file(file: UploadFile) -> str:
+    """파일에서 텍스트 추출"""
     try:
-        # Validate file before processing
+        # 파일 검증
         await validate_file(file)
         
         # Read file content
@@ -95,12 +93,10 @@ async def extract_text_from_file(file: UploadFile) -> str:
             pass
 
 def extract_from_pdf(file_bytes: bytes) -> str:
-
+    """PDF 파일에서 텍스트 추출"""
     try:
-        # Import here to avoid loading unless needed
         import fitz
         
-        # Parse PDF file
         with fitz.open(stream=file_bytes, filetype="pdf") as doc:
             if doc.page_count == 0:
                 raise ValueError("The PDF file is empty or invalid")
@@ -119,12 +115,10 @@ def extract_from_pdf(file_bytes: bytes) -> str:
         raise_http_exception(f"Failed to extract text from PDF: {str(e)}", code=500)
 
 def extract_from_docx(file_bytes: bytes) -> str:
-
+    """DOCX 파일에서 텍스트 추출"""
     try:
-        # Import here to avoid loading unless needed
         import docx
         
-        # Parse DOCX file
         doc = docx.Document(BytesIO(file_bytes))
         
         if not doc.paragraphs:

@@ -23,36 +23,26 @@ class ModelLoader:
     def _load_model_config(self):
         """`models.json`에서 모델 설정을 로드."""
         try:
-            # 환경변수에서 모델 설정 경로를 불러오고, 없으면 기본 경로 사용
-            config_path = os.getenv("MODEL_CONFIG_PATH", 'app/config/models.json')  
+            config_path = os.getenv("MODEL_CONFIG_PATH", 'app/config/models.json')
             with open(config_path, 'r', encoding='utf-8') as f:
                 self._model_config = json.load(f)
             logger.info("모델 설정을 성공적으로 로드했습니다.")
-        except FileNotFoundError as e:
-            logger.error(f"모델 설정 파일을 찾을 수 없습니다: {e}")
-            raise Exception("모델 설정 파일을 찾을 수 없습니다.")
-        except json.JSONDecodeError as e:
-            logger.error(f"모델 설정 파일을 읽는 중 오류 발생: {e}")
-            raise Exception("모델 설정 파일이 잘못된 JSON 형식입니다.")
         except Exception as e:
-            logger.error(f"모델 설정 로딩 실패: {e}")
+            logger.error(f"모델 설정 로딩 실패: {str(e)}")
             raise Exception("모델 설정 로딩에 실패했습니다.")
     
     @lru_cache(maxsize=None)
     def get_pipeline(self, lang: str):
         """요청된 언어에 대한 요약 파이프라인을 반환."""
-        # 지정된 언어에 맞는 모델명을 가져오고, 없으면 'en' 모델로 fallback
         model_name = self._model_config.get(lang, self._model_config.get('en'))
         
         try:
-            # transformers 파이프라인을 사용하여 모델 로드
             return pipeline("summarization", model=model_name)
         except Exception as e:
-            logger.error(f"모델 {model_name}을(를) 로드하는 중 오류 발생: {e}")
-            # 모델 로딩 실패 시 'en' 모델로 fallback
+            logger.error(f"모델 {model_name} 로딩 실패: {str(e)}")
             fallback_model_name = self._model_config.get('en')
             logger.info(f"기본 모델로 fallback: {fallback_model_name}")
             return pipeline("summarization", model=fallback_model_name)
 
-# ModelLoader의 인스턴스 생성
+# ModelLoader 싱글톤 인스턴스 생성
 model_loader = ModelLoader()
