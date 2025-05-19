@@ -1,11 +1,11 @@
 from jose import JWTError, jwt
-from app.config.settings import settings
+from app.config.settings import settings  # settings 파일에서 불러오기
 from app.utils.error_handler import raise_http_exception
 from cryptography.hazmat.primitives import serialization
 
 # 개인 키와 공개 키 로드
-private_key = settings.PRIVATE_KEY
-public_key = settings.PUBLIC_KEY
+private_key = settings.PRIVATE_KEY  # SECRET_KEY를 PRIVATE_KEY로 교체하여 사용
+public_key = settings.PUBLIC_KEY  # 공개 키 로드
 
 ALGORITHM = "RS256"
 
