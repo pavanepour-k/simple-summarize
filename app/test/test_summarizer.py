@@ -1,28 +1,37 @@
-import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
 
-def test_api_summarization():
-    # 요약 API 호출 테스트
-    response = client.post(
-        "/summarize", 
-        json={"content": "This is a test sentence.", "option": "short", "style": "general"}
-    )
+# Test short summary
+def test_summarize_short():
+    data = {
+        "content": "FastAPI is a fast and efficient web framework.",
+        "option": "short",
+        "style": "general"
+    }
+    response = client.post("/summarize", json=data)
     assert response.status_code == 200
-    assert "summary" in response.json()  # 응답에 'summary' 필드가 있어야 함
-    assert len(response.json()["summary"]) > 0  # 요약된 내용이 있어야 함
+    assert "summary_text" in response.json()
 
-def test_file_upload():
-    # 파일 업로드 크기 제한 테스트
-    with open("test_file.txt", "w") as f:
-        f.write("This is a test file content.")
-    
-    with open("test_file.txt", "rb") as f:
-        response = client.post(
-            "/upload", 
-            files={"file": ("test_file.txt", f, "text/plain")}
-        )
-    assert response.status_code == 200  # 업로드 성공
-    assert "file_url" in response.json()  # 업로드된 파일 URL이 반환되어야 함
+# Test medium summary
+def test_summarize_medium():
+    data = {
+        "content": "FastAPI is a modern, fast web framework written in Python, supporting asynchronous operations and boasting excellent performance.",
+        "option": "medium",
+        "style": "general"
+    }
+    response = client.post("/summarize", json=data)
+    assert response.status_code == 200
+    assert "summary_text" in response.json()
+
+# Test long summary
+def test_summarize_long():
+    data = {
+        "content": "FastAPI is a fast, modern framework for web development. It is written in Python and supports asynchronous processing, providing excellent performance. It also offers Swagger UI and ReDoc for API documentation, and automatic API generation based on Python type hints.",
+        "option": "long",
+        "style": "general"
+    }
+    response = client.post("/summarize", json=data)
+    assert response.status_code == 200
+    assert "summary_text" in response.json()

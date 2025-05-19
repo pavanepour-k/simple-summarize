@@ -1,33 +1,35 @@
 from fastapi import APIRouter, Depends, Query
-from typing import List, Dict
 from app.security.auth import verify_admin
 from app.services.analytics import get_usage_stats, get_recent_logs
+from typing import Dict
 
-# Admin-only router with proper dependency injection
+# Admin router with dependency injection
 admin_router = APIRouter(
-    prefix="/admin", 
+    prefix="/admin",
     tags=["Admin"],
-    dependencies=[Depends(verify_admin)]  # All routes require admin authentication
+    dependencies=[Depends(verify_admin)],  # Admin authentication required
 )
 
+
 @admin_router.get(
-    "/stats", 
+    "/stats",
     summary="System usage statistics",
     description="Returns API usage statistics",
-    response_model=Dict[str, int]
+    response_model=Dict[str, int],
 )
 async def read_usage_stats():
-    """Get system-wide usage statistics (admin only)"""
+    # Get system-wide usage stats
     return await get_usage_stats()
 
+
 @admin_router.get(
-    "/logs", 
+    "/logs",
     summary="Recent summary logs",
-    description="Returns the most recent API call logs"
+    description="Returns the most recent API call logs",
 )
 async def read_recent_logs(
-    limit: int = Query(100, description="Maximum number of logs to return", ge=1, le=1000)
+    limit: int = Query(100, description="Max logs to return", ge=1, le=1000)
 ):
-    """Get recent API usage logs (admin only)"""
+    # Get recent API logs
     logs = await get_recent_logs()
-    return logs[:limit]  # Apply limit parameter
+    return logs[:limit]  # Apply limit
