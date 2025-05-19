@@ -21,6 +21,12 @@ class SummaryStyle(Enum):
     PROBLEM_SOLVING = "problem_solving"
     EMOTIONAL = "emotional"
 
+# 요약 길이를 정의하는 Enum
+class SummaryOption(Enum):
+    SHORT = "short"
+    MEDIUM = "medium"
+    LONG = "long"
+
 # 스타일별 프롬프트 매핑
 STYLE_PROMPT_MAPPING = {
     SummaryStyle.GENERAL: "Summarize this text in a neutral and concise manner.",
@@ -28,8 +34,15 @@ STYLE_PROMPT_MAPPING = {
     SummaryStyle.EMOTIONAL: "Summarize this text with an emotional tone, capturing the feelings and emotions expressed."
 }
 
+# 요약 길이 설정
+SUMMARY_LENGTH_MAPPING = {
+    SummaryOption.SHORT: {"max_length": 50, "min_length": 25},
+    SummaryOption.MEDIUM: {"max_length": 150, "min_length": 80},
+    SummaryOption.LONG: {"max_length": 300, "min_length": 150}
+}
+
 class SummarizerService:
-# 언어별 모델을 사용하여 텍스트 요약을 처리하는 서비스
+    """언어별 모델을 사용하여 텍스트 요약을 처리하는 서비스."""
     
     def __init__(self, model_loader=model_loader):
         """
@@ -39,19 +52,23 @@ class SummarizerService:
         """
         self.model_loader = model_loader
 
-    def summarize(self, text: str, lang: str, style: SummaryStyle = SummaryStyle.GENERAL):
+    def summarize(self, text: str, lang: str, style: SummaryStyle = SummaryStyle.GENERAL, option: SummaryOption = SummaryOption.MEDIUM):
         """
         주어진 텍스트를 지정된 언어 모델로 요약합니다.
         
         :param text: 요약할 입력 텍스트
         :param lang: 언어 코드 ('en', 'ko', 'ja' 등)
         :param style: 스타일 맞춤을 위한 선택적 요약 스타일 (기본값: 일반)
+        :param option: 요약 길이 설정 (기본값: medium)
         
         :return: 요약된 텍스트
         """
         try:
             # 스타일에 맞는 프롬프트 선택
             style_prompt = STYLE_PROMPT_MAPPING.get(style, STYLE_PROMPT_MAPPING[SummaryStyle.GENERAL])
+            
+            # 요약 길이에 맞는 max_length, min_length 설정
+            length_params = SUMMARY_LENGTH_MAPPING.get(option, SUMMARY_LENGTH_MAPPING[SummaryOption.MEDIUM])
             
             # 언어에 맞는 모델 파이프라인 로드
             model_pipeline = self.model_loader.get_pipeline(lang)
@@ -60,7 +77,7 @@ class SummarizerService:
             input_text = f"{style_prompt} {text}"
             
             # 요약 실행
-            result = model_pipeline(input_text)
+            result = model_pipeline(input_text, max_length=length_params["max_length"], min_length=length_params["min_length"])
             
             # 요약 텍스트 반환
             return result[0]['summary_text']
@@ -68,9 +85,11 @@ class SummarizerService:
         except KeyError as e:
             # 언어 모델이 없으면 'en' 모델로 fallback
             logger.error(f"{lang} 모델을 찾을 수 없어 'en' 모델로 변경. 에러: {e}")
-            raise HTTPException(status_code=415, detail=f"E101: Model '{lang}' not found, defaulting to 'en'.")
+            model_pipeline = self.model_loader.get_pipeline('en')
+            result = model_pipeline(input_text, max_length=length_params["max_length"], min_length=length_params["min_length"])
+            return result[0]['summary_text']
         
         except Exception as e:
             # 예외 발생 시 에러 로그 출력 후 HTTPException 반환
             logger.error(f"요약 중 오류 발생: {e}")
-            raise HTTPException(status_code=500, detail=f"E102: Failed to summarize text in {lang}. Please check model or input.")
+            raise HTTPException(status_code=500, detail=f"{lang} 언어로 텍스트 요약 중 오류가 발생했습니다. 모델 설정이나 입력을 확인해주세요.")
