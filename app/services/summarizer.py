@@ -29,7 +29,7 @@ STYLE_PROMPT_MAPPING = {
 }
 
 class SummarizerService:
-    """언어별 모델을 사용하여 텍스트 요약을 처리하는 서비스."""
+# 언어별 모델을 사용하여 텍스트 요약을 처리하는 서비스
     
     def __init__(self, model_loader=model_loader):
         """
@@ -68,11 +68,9 @@ class SummarizerService:
         except KeyError as e:
             # 언어 모델이 없으면 'en' 모델로 fallback
             logger.error(f"{lang} 모델을 찾을 수 없어 'en' 모델로 변경. 에러: {e}")
-            model_pipeline = self.model_loader.get_pipeline('en')
-            result = model_pipeline(input_text)
-            return result[0]['summary_text']
+            raise HTTPException(status_code=415, detail=f"E101: Model '{lang}' not found, defaulting to 'en'.")
         
         except Exception as e:
             # 예외 발생 시 에러 로그 출력 후 HTTPException 반환
             logger.error(f"요약 중 오류 발생: {e}")
-            raise HTTPException(status_code=500, detail=f"{lang} 언어로 텍스트 요약 중 오류가 발생했습니다. 모델 설정이나 입력을 확인해주세요.")
+            raise HTTPException(status_code=500, detail=f"E102: Failed to summarize text in {lang}. Please check model or input.")
