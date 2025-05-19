@@ -22,6 +22,8 @@ Thumbs.db
 *.log
 *.tmp
 *.swp
+test/
+test_*
 
 # 테스트/커버리지
 htmlcov/
@@ -44,6 +46,8 @@ dist/
 .env
 .env.*
 *.pem
+
 # 파이썬 프로젝트 설정 (선택적 무시)
 pip-wheel-metadata/
 2.0
+requirements.in

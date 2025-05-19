@@ -1,74 +1,88 @@
 import logging
-from app.config.config_manager import ConfigManager  # ConfigManager 불러오기
+from datetime import datetime
+from app.config.redis_client import RedisClient
+from app.utils.error_handler import raise_http_exception
 
-# 로거 초기화
+# Initialize logger
 logger = logging.getLogger(__name__)
 
-class RateLimiter:
-    """속도 제한을 처리하는 클래스"""
-    
-    def __init__(self):
-        """
-        RateLimiter 초기화
-        ConfigManager는 기본적으로 싱글톤 사용
-        """
-        self.config_manager = ConfigManager.instance()
+# Plan rate limit (for demonstration purposes)
+PLAN_RATE_LIMIT = {
+    "user": {"free": 1000, "pro": 5000, "enterprise": 10000},
+    "pro": {"free": 1000, "pro": 10000, "enterprise": 20000},
+    "admin": {"free": 1000, "pro": 10000, "enterprise": 50000},
+}
 
-    def get_plan_limit(self, role: str, plan: str):
-        """
-        역할과 계획에 대한 제한을 가져옴
-        
-        :param role: 사용자 역할
-        :param plan: 사용자 계획
-        :return: 제한 값
-        """
-        try:
-            # 계획 제한 가져오기
-            limit = self.config_manager.get_plan_limit(role, plan)
-            logger.info(f"'{role}' 역할의 '{plan}' 계획에 대한 제한: {limit}")
-            return limit
-        except KeyError as e:
-            logger.error(f"제한 가져오기 오류: {role}, {plan}, 오류: {e}")
-            raise ValueError("계획 제한을 가져오는 중 오류 발생")
-        except Exception as e:
-            logger.error(f"예상치 못한 오류: {e}")
-            raise
 
-    def get_time_based_limit(self, role: str, plan: str):
-        """
-        역할과 계획에 대한 시간 기반 제한을 가져옴
-        
-        :param role: 사용자 역할
-        :param plan: 사용자 계획
-        :return: 시간 기반 제한
-        """
-        try:
-            # 시간 기반 제한 가져오기
-            time_limit = self.config_manager.get_time_based_limit(role, plan)
-            logger.info(f"'{role}' 역할의 '{plan}' 계획에 대한 시간 기반 제한: {time_limit}")
-            return time_limit
-        except KeyError as e:
-            logger.error(f"시간 제한 가져오기 오류: {role}, {plan}, 오류: {e}")
-            raise ValueError("시간 기반 제한을 가져오는 중 오류 발생")
-        except Exception as e:
-            logger.error(f"예상치 못한 오류: {e}")
-            raise
+# Get the current limit for the plan and role
+def get_plan_limit(role: str, plan: str):
+    # Return the call limit dynamically from PLAN_RATE_LIMIT
+    role = role.lower()
+    plan = plan.lower()
+    return PLAN_RATE_LIMIT.get(role, PLAN_RATE_LIMIT["user"]).get(
+        plan, PLAN_RATE_LIMIT["user"]["free"]
+    )
 
-    def is_within_limit(self, role: str, plan: str, request_count: int, time_elapsed: int):
-        """
-        요청 수와 경과 시간이 제한 내에 있는지 확인
-        
-        :param role: 사용자 역할
-        :param plan: 사용자 계획
-        :param request_count: 요청 수
-        :param time_elapsed: 경과 시간
-        :return: 제한 내 여부 (True/False)
-        """
-        plan_limit = self.get_plan_limit(role, plan)
-        time_limit = self.get_time_based_limit(role, plan)
-        
-        if request_count <= plan_limit and time_elapsed <= time_limit:
-            return True
-        else:
-            logger.warning(f"요청 수 {request_count} 또는 경과 시간 {time_elapsed} 초과")
-            return False
+
+async def increment_request_count(api_key: str, hour: int):
+    # Increment the request count for the given API key and hour
+    try:
+        redis_client = await RedisClient.instance()
+        await redis_client.retry_command(
+            "HINCRBY", f"{api_key}:hourly:{hour}", "count", 1
+        )
+        await redis_client.retry_command(
+            "EXPIRE", f"{api_key}:hourly:{hour}", 86400
+        )  # 24-hour validity
+        return await redis_client.execute("HGET", f"{api_key}:hourly:{hour}", "count")
+    except Exception as e:
+        raise_http_exception(f"Failed to increment request count: {str(e)}", code=500)
+
+
+async def log_api_call(api_key: str, hour: int):
+    # Log the API call to Redis
+    try:
+        redis_client = await RedisClient.instance()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await redis_client.retry_command("LPUSH", f"{api_key}:call_logs", timestamp)
+        await redis_client.retry_command(
+            "LTRIM", f"{api_key}:call_logs", 0, 99
+        )  # Keep only the most recent 100 logs
+    except Exception as e:
+        raise_http_exception(f"Failed to log API call: {str(e)}", code=500)
+
+
+async def check_rate_limit(api_key: str, role: str, plan: str):
+    # Check the rate limit for API calls and raise an error if exceeded
+    try:
+        current_hour = datetime.now().hour  # Get current hour
+        limit = get_plan_limit(role, plan)  # Get the call limit based on role and plan
+        time_based_limit = get_time_based_limit(
+            role, plan, current_hour
+        )  # Get time-based rate limit
+
+        # Apply the minimum of both limits
+        limit = min(limit, time_based_limit)
+
+        current_count = await increment_request_count(api_key, current_hour)
+        await log_api_call(api_key, current_hour)  # Log the API call
+
+        if current_count > limit:
+            raise_http_exception(
+                f"Rate limit exceeded. Current: {current_count}, Limit: {limit}",
+                code=429,
+            )
+    except Exception as e:
+        raise_http_exception(f"Rate limit check failed: {str(e)}", code=500)
+
+
+async def get_time_based_limit(role: str, plan: str, hour: int) -> int:
+    # Return the time-based API limit (e.g., based on the hour)
+    time_limits = {
+        "user": {0: 50, 6: 200, 12: 300, 18: 150},
+        "pro": {0: 100, 6: 500, 12: 1000, 18: 800},
+    }
+    role = role.lower()
+    time_limits_for_role = time_limits.get(role, time_limits["user"])
+
+    return time_limits_for_role.get(hour, 100)  # Default limit is 100 calls

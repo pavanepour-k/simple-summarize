@@ -1,61 +1,114 @@
 import logging
 from fastapi import HTTPException
-from app.services.model_loader import model_loader  # ModelLoader 싱글톤 인스턴스 불러오기
+from app.services.model_loader import model_loader  # ModelLoader singleton instance
+from enum import Enum
 
-# 로거 초기화
+# Initialize logger
 logger = logging.getLogger(__name__)
 
-# 모델 관련 라이브러리 체크
+# Check model related libraries
 try:
     import torch
     import tensorflow
     import flax
 except ImportError as e:
-    logger.error(f"모델 관련 라이브러리 누락: {e.name}. 모든 의존성이 설치되었는지 확인해주세요.")
-    raise HTTPException(status_code=500, detail="필수 모델 라이브러리가 누락되었습니다. 설치를 확인해주세요.")
+    logger.error(
+        f"Model libraries missing: {e.name}. Please ensure all dependencies are installed."
+    )
+    raise HTTPException(
+        status_code=500,
+        detail="Required model libraries are missing. Please check installation.",
+    )
+
+
+# Define summary styles Enum
+class SummaryStyle(Enum):
+    GENERAL = "general"
+    PROBLEM_SOLVING = "problem_solving"
+    EMOTIONAL = "emotional"
+
+
+# Define summary length Enum
+class SummaryOption(Enum):
+    SHORT = "short"
+    MEDIUM = "medium"
+    LONG = "long"
+
+
+# Style prompt mapping
+STYLE_PROMPT_MAPPING = {
+    SummaryStyle.GENERAL: "Summarize this text in a neutral and concise manner.",
+    SummaryStyle.PROBLEM_SOLVING: "Summarize this text, focusing on the solution and problem-solving aspects.",
+    SummaryStyle.EMOTIONAL: "Summarize this text with an emotional tone, capturing the feelings and emotions expressed.",
+}
+
+# Summary length settings
+SUMMARY_LENGTH_MAPPING = {
+    SummaryOption.SHORT: {"max_length": 50, "min_length": 25},
+    SummaryOption.MEDIUM: {"max_length": 150, "min_length": 80},
+    SummaryOption.LONG: {"max_length": 300, "min_length": 150},
+}
+
 
 class SummarizerService:
-    """언어별 모델을 사용하여 텍스트 요약을 처리하는 서비스."""
-    
+    # Service to process text summarization using language models
+
     def __init__(self, model_loader=model_loader):
-        """
-        SummarizerService 초기화 (ModelLoader 인스턴스)
-        
-        :param model_loader: 모델 로딩을 관리할 ModelLoader 인스턴스 (기본값: 싱글톤)
-        """
+        # Initialize SummarizerService (ModelLoader instance)
         self.model_loader = model_loader
 
-    def summarize(self, text: str, lang: str, style_prompt: str = ""):
-        """
-        주어진 텍스트를 지정된 언어 모델로 요약합니다.
-        
-        :param text: 요약할 입력 텍스트
-        :param lang: 언어 코드 ('en', 'ko', 'ja' 등)
-        :param style_prompt: 스타일 맞춤을 위한 선택적 프롬프트 (기본값은 없음)
-        
-        :return: 요약된 텍스트
-        """
+    def summarize(
+        self,
+        text: str,
+        lang: str,
+        style: SummaryStyle = SummaryStyle.GENERAL,
+        option: SummaryOption = SummaryOption.MEDIUM,
+    ):
+        # Summarize the given text using the selected language model
         try:
-            # 언어에 맞는 모델 파이프라인 로드
+            # Choose the style prompt
+            style_prompt = STYLE_PROMPT_MAPPING.get(
+                style, STYLE_PROMPT_MAPPING[SummaryStyle.GENERAL]
+            )
+
+            # Set max_length and min_length according to summary length
+            length_params = SUMMARY_LENGTH_MAPPING.get(
+                option, SUMMARY_LENGTH_MAPPING[SummaryOption.MEDIUM]
+            )
+
+            # Load the model pipeline for the specified language
             model_pipeline = self.model_loader.get_pipeline(lang)
-            
-            # 스타일 프롬프트가 있으면 입력 텍스트에 추가
-            input_text = f"{style_prompt} {text}" if style_prompt else text
-            
-            # 요약 실행
-            result = model_pipeline(input_text)
-            
-            # 요약 텍스트 반환
-            return result[0]['summary_text']
-        
+
+            # Add the style prompt to the input text
+            input_text = f"{style_prompt} {text}"
+
+            # Perform summarization
+            result = model_pipeline(
+                input_text,
+                max_length=length_params["max_length"],
+                min_length=length_params["min_length"],
+            )
+
+            # Return summarized text
+            return result[0]["summary_text"]
+
         except KeyError as e:
-            # 언어 모델이 없으면 'en' 모델로 fallback
-            logger.error(f"{lang} 모델을 찾을 수 없어 'en' 모델로 변경. 에러: {e}")
-            model_pipeline = self.model_loader.get_pipeline('en')
-            result = model_pipeline(input_text)
-            return result[0]['summary_text']
-        
+            # Fallback to 'en' model if the language model is not found
+            logger.error(
+                f"Could not find {lang} model, falling back to 'en'. Error: {e}"
+            )
+            model_pipeline = self.model_loader.get_pipeline("en")
+            result = model_pipeline(
+                input_text,
+                max_length=length_params["max_length"],
+                min_length=length_params["min_length"],
+            )
+            return result[0]["summary_text"]
+
         except Exception as e:
-            # 예외 발생 시 에러 로그 출력 후 HTTPException 반환
-            logger.error(f"요약 중 오류 발생: {e}")
-            raise HTTPException(status_code=500, detail=f"{lang} 언어로 텍스트 요약 중 오류가 발생했습니다. 모델 설정이나 입력을 확인해주세요.")
+            # Log the error and raise an HTTP exception
+            logger.error(f"Error during summarization: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error summarizing text in {lang}. Please check model settings or input.",
+            )

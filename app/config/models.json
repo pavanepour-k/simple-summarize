@@ -1,5 +1,5 @@
 {
-  "en": "facebook/bart-large-cnn",
-  "ko": "HeoAI/KoT5-summarization",
-  "ja": "line-corporation/line-distilbert-ja-summarization"
+    "en": "facebook/bart-large-cnn",
+    "ja": "sonoisa/t5-base-japanese-summarization",
+    "ko": "Helsinki-NLP/opus-mt-ko-en"
 }
