@@ -1,7 +1,5 @@
 {
     "en": "facebook/bart-large-cnn",
-    "ko": "Helsinki-NLP/opus-mt-ko-en",
     "ja": "sonoisa/t5-base-japanese-summarization",
-    "fr": "facebook/bart-large-cnn", 
-    "de": "facebook/bart-large-cnn"
+    "ko": "Helsinki-NLP/opus-mt-ko-en"
 }
