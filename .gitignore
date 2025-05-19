@@ -22,7 +22,7 @@ Thumbs.db
 *.log
 *.tmp
 *.swp
-
+test/
 # 테스트/커버리지
 htmlcov/
 .tox/
