@@ -1,88 +1,78 @@
-import asyncio
-from app.models.response_model import SummaryOutput
-from app.models.request_model import SummaryStyle, SummaryOption
-from app.config.plan_config import PlanConfigService
-import os
-from typing import Dict, Any
+import logging
+from fastapi import HTTPException
+from app.services.model_loader import model_loader  # ModelLoader 싱글톤 인스턴스 불러오기
+from enum import Enum
+
+# 로거 초기화
+logger = logging.getLogger(__name__)
+
+# 모델 관련 라이브러리 체크
+try:
+    import torch
+    import tensorflow
+    import flax
+except ImportError as e:
+    logger.error(f"모델 관련 라이브러리 누락: {e.name}. 모든 의존성이 설치되었는지 확인해주세요.")
+    raise HTTPException(status_code=500, detail="필수 모델 라이브러리가 누락되었습니다. 설치를 확인해주세요.")
+
+# 요약 스타일을 정의하는 Enum
+class SummaryStyle(Enum):
+    GENERAL = "general"
+    PROBLEM_SOLVING = "problem_solving"
+    EMOTIONAL = "emotional"
+
+# 스타일별 프롬프트 매핑
+STYLE_PROMPT_MAPPING = {
+    SummaryStyle.GENERAL: "Summarize this text in a neutral and concise manner.",
+    SummaryStyle.PROBLEM_SOLVING: "Summarize this text, focusing on the solution and problem-solving aspects.",
+    SummaryStyle.EMOTIONAL: "Summarize this text with an emotional tone, capturing the feelings and emotions expressed."
+}
 
 class SummarizerService:
-    def __init__(self, lang: str = None, plan_config_service: PlanConfigService = None):
-        self.lang = lang
-        self.plan_config_service = plan_config_service or PlanConfigService()
-        self.length_mapping = {
-            SummaryOption.short: 100,
-            SummaryOption.medium: 250,
-            SummaryOption.long: 500
-        }
-
-    async def detect_language_async(self, content: str) -> str:
-        """Detect language asynchronously to avoid blocking"""
-        # This would use a library like langdetect, but wrap it in async
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._detect_language, content)
-
-    def _detect_language(self, content: str) -> str:
-        """Synchronous language detection (to be executed in a thread pool)"""
-        # Language detection logic
-        # For example: return langdetect.detect(content)
-        return "en"  # Default to English for this example
-        
-    async def _route_content(self, content: str) -> str:
-        """Route content based on language asynchronously"""
-        if not self.lang:
-            self.lang = await self.detect_language_async(content)
-        return content  # Simplified for example
-
-    def _generate_style_prompt(self, style: SummaryStyle) -> str:
-        """Generate style-specific prompts"""
-        style_prompts = {
-            SummaryStyle.problem_solver: "Please summarize this content by focusing on identifying problems and their solutions:\n",
-            SummaryStyle.emotion_focused: "Summarize the emotional or opinionated aspects of the following content:\n",
-            SummaryStyle.general: ""
-        }
-        return style_prompts.get(style, "")
-
-    async def summarize_async(self, content: str, option: SummaryOption, style: SummaryStyle = SummaryStyle.general) -> SummaryOutput:
-        """Asynchronous summarization method"""
-        if not self.lang:
-            self.lang = await self.detect_language_async(content)  # Detect language asynchronously
-
-        routed_content = await self._route_content(content)
-
-        style_prompt = self._generate_style_prompt(style)
-        if style_prompt:
-            routed_content = style_prompt + routed_content
-
-        # Get appropriate model for the language
-        model_path = self.plan_config_service.get_model_for_language(self.lang)
-        
-        # Run model inference asynchronously
-        max_len = self.length_mapping.get(option, 250)
-        summarized_text = await self._run_model_async(model_path, routed_content, max_len)
-        
-        # Create response object
-        response = SummaryOutput(
-            summary=summarized_text,
-            length=option.value,
-            input_length=len(content),
-            language=self.lang,
-            style=style.value,
-        )
-
-        # Add style_prompt for debugging if enabled
-        if os.getenv("DEBUG_MODE", "false").lower() == "true":
-            response.style_prompt = style_prompt
-        
-        return response
-        
-    async def _run_model_async(self, model_path: str, content: str, max_len: int) -> str:
-        """Run the model asynchronously"""
-        # This would typically load and run the model
-        # For this example, we'll just return a mock result
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._mock_model_inference, content, max_len)
+    """언어별 모델을 사용하여 텍스트 요약을 처리하는 서비스."""
     
-    def _mock_model_inference(self, content: str, max_len: int) -> str:
-        """Mock model inference (to be executed in a thread pool)"""
-        # This would be replaced with actual model inference
-        return f"Summary of: {content[:max_len//10]}..."
+    def __init__(self, model_loader=model_loader):
+        """
+        SummarizerService 초기화 (ModelLoader 인스턴스)
+        
+        :param model_loader: 모델 로딩을 관리할 ModelLoader 인스턴스 (기본값: 싱글톤)
+        """
+        self.model_loader = model_loader
+
+    def summarize(self, text: str, lang: str, style: SummaryStyle = SummaryStyle.GENERAL):
+        """
+        주어진 텍스트를 지정된 언어 모델로 요약합니다.
+        
+        :param text: 요약할 입력 텍스트
+        :param lang: 언어 코드 ('en', 'ko', 'ja' 등)
+        :param style: 스타일 맞춤을 위한 선택적 요약 스타일 (기본값: 일반)
+        
+        :return: 요약된 텍스트
+        """
+        try:
+            # 스타일에 맞는 프롬프트 선택
+            style_prompt = STYLE_PROMPT_MAPPING.get(style, STYLE_PROMPT_MAPPING[SummaryStyle.GENERAL])
+            
+            # 언어에 맞는 모델 파이프라인 로드
+            model_pipeline = self.model_loader.get_pipeline(lang)
+            
+            # 스타일 프롬프트가 있으면 입력 텍스트에 추가
+            input_text = f"{style_prompt} {text}"
+            
+            # 요약 실행
+            result = model_pipeline(input_text)
+            
+            # 요약 텍스트 반환
+            return result[0]['summary_text']
+        
+        except KeyError as e:
+            # 언어 모델이 없으면 'en' 모델로 fallback
+            logger.error(f"{lang} 모델을 찾을 수 없어 'en' 모델로 변경. 에러: {e}")
+            model_pipeline = self.model_loader.get_pipeline('en')
+            result = model_pipeline(input_text)
+            return result[0]['summary_text']
+        
+        except Exception as e:
+            # 예외 발생 시 에러 로그 출력 후 HTTPException 반환
+            logger.error(f"요약 중 오류 발생: {e}")
+            raise HTTPException(status_code=500, detail=f"{lang} 언어로 텍스트 요약 중 오류가 발생했습니다. 모델 설정이나 입력을 확인해주세요.")
