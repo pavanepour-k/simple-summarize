@@ -23,6 +23,8 @@ Thumbs.db
 *.tmp
 *.swp
 test/
+test_*
+
 # 테스트/커버리지
 htmlcov/
 .tox/
