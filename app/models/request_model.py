@@ -6,6 +6,11 @@ class SummaryOption(str, Enum):
     medium = "medium"
     long = "long"
 
+    # 각 옵션에 따른 구체적인 설명 추가
+    short_description = "Short summary with brief content (max 50 characters)."
+    medium_description = "Medium summary with more detail (max 150 characters)."
+    long_description = "Long summary providing detailed information (max 300 characters)."
+
 class SummaryStyle(str, Enum):
     general = "general"
     problem_solver = "problem_solver"
