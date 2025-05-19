@@ -8,7 +8,9 @@ class PlanConfigService:
     def _load_model_paths(self) -> dict:
         """모델 경로를 설정 파일에서 로드하는 함수"""
         try:
-            with open("config/models.json", 'r') as file:
+            # 환경 변수를 사용하여 경로 설정
+            config_path = os.getenv("MODEL_CONFIG_PATH", "config/models.json")
+            with open(config_path, 'r') as file:
                 return json.load(file)
         except Exception as e:
             raise Exception(f"Failed to load model paths from config file: {str(e)}")
