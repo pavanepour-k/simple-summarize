@@ -12,4 +12,4 @@ def test_file_size_limit():
         files={"file": ("large_file.txt", large_file, "text/plain")}
     )
     assert response.status_code == 413  # HTTP 413 Payload Too Large error
-    assert "File is too large" in response.json()["detail"]  # Check error message
+    assert "File too large" in response.json()["detail"]  # Check error message

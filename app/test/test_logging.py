@@ -14,4 +14,4 @@ def test_log_creation():
     with open('app.log', 'r') as log_file:
         logs = log_file.read()
         assert "INFO" in logs  # Check if 'INFO' log exists
-        assert "some endpoint accessed" in logs  # Ensure the endpoint access log exists
+        assert "/some-endpoint accessed" in logs  # Ensure the endpoint access log exists

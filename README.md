@@ -121,7 +121,6 @@
 
 ### Environment Configuration & Dependency Management
 
-- **python-dotenv (v1.0.1)**: Loads environment variables from a `.env` file for managing sensitive data like API keys and secrets.
 
 ### Rate Limiting & Request Handling
 
@@ -281,9 +280,6 @@ This README file provides information about the SimpleSummarize project, includi
 It also covers the importance of security when handling environment variables and how to ensure compliance with open-source licenses.
 
 
-### Contributing
-
-To contribute, fork this repository and submit a pull request. All contributions are made under the MIT License.
 
 ---
 
