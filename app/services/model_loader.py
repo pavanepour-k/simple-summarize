@@ -1,6 +1,7 @@
 import json
 import logging
 from transformers import pipeline
+from app.utils.utils import load_model
 from functools import lru_cache
 import os
 
@@ -48,16 +49,14 @@ class ModelLoader:
         # Return the summarization pipeline for the requested language
         model_key = self._selected_model_key or lang
         model_name = self._model_config.get(model_key, self._model_config.get("en"))
-        
+
         try:
-            return pipeline("summarization", model=model_name)
+            return load_model(model_name)
         except Exception as e:
             logger.error(f"Failed to load model {model_name}: {str(e)}")
             fallback_model_name = self._model_config.get("en")
             logger.info(f"Falling back to default model: {fallback_model_name}")
-            return pipeline(
-                "summarization", model=fallback_model_name
-            )  # Breaking long line for readability
+            return load_model(fallback_model_name)
 
 
 # Create ModelLoader singleton instance
