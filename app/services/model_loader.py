@@ -13,6 +13,7 @@ class ModelLoader:
 
     _instance = None
     _model_config = None
+    _selected_model_key = None    
 
     def __new__(cls, *args, **kwargs):
         # Ensure that only one instance of ModelLoader exists
@@ -28,6 +29,15 @@ class ModelLoader:
             config_path = os.getenv("MODEL_CONFIG_PATH", "config/models.json")
             with open(config_path, "r", encoding="utf-8") as f:
                 self._model_config = json.load(f)
+
+            # Read specific model key from environment variable
+            self._selected_model_key = os.getenv("MODEL_NAME")
+            if self._selected_model_key and self._selected_model_key not in self._model_config:
+                logger.warning(
+                    f"Model key '{self._selected_model_key}' not found in configuration."
+                )
+                self._selected_model_key = None
+
             logger.info("Successfully loaded model configuration.")
         except Exception as e:
             logger.error(f"Failed to load model configuration: {str(e)}")
@@ -36,8 +46,9 @@ class ModelLoader:
     @lru_cache(maxsize=None)
     def get_pipeline(self, lang: str):
         # Return the summarization pipeline for the requested language
-        model_name = self._model_config.get(lang, self._model_config.get("en"))
-
+        model_key = self._selected_model_key or lang
+        model_name = self._model_config.get(model_key, self._model_config.get("en"))
+        
         try:
             return pipeline("summarization", model=model_name)
         except Exception as e:
