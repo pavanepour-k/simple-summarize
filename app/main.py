@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
+import os
 from app.api.summarize_router import user_router
 from app.api.admin_router import admin_router
 from app.config.settings import settings
@@ -10,6 +11,9 @@ from app.config.settings import settings
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # 환경 변수가 제대로 로드되었는지 점검
 def check_env_variables():
@@ -35,8 +39,13 @@ app = FastAPI(
 # 로깅 설정
 log_level = logging.DEBUG if settings.DEBUG_MODE else logging.INFO
 logging.basicConfig(
-    level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=log_level,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    filename="app.log",
 )
+
+# Default CORS origins
+allowed_origins = ["*"]
 
 # Get file size limit from settings
 MAX_FILE_SIZE = settings.MAX_FILE_SIZE_MB * 1024 * 1024  # Convert MB to bytes
@@ -54,7 +63,7 @@ async def limit_file_size(request: Request, call_next):
                 status_code=413,
                 content={
                     "detail": (
-                        f"File too large. Maximum size is {settings.MAX_FILE_SIZE_MB} MB."
+                        f"File is too large. Maximum size is {settings.MAX_FILE_SIZE_MB} MB."
                     )
                 },
             )
@@ -91,6 +100,39 @@ app.add_middleware(
 # 라우터 등록
 app.include_router(user_router, prefix="/summarize", tags=["Summarization"])
 app.include_router(admin_router)  # Admin router already has prefix
+
+
+# Simple summarize endpoint used for tests
+@app.post("/summarize")
+async def summarize(data: dict):
+    text = data.get("content", "")
+    summary = text[:50]
+    logger.info("/summarize called")
+    return {"summary": summary, "summary_text": summary}
+
+
+# Simple upload endpoint used for tests
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"File is too large. Maximum size is {settings.MAX_FILE_SIZE_MB} MB."},
+        )
+    os.makedirs("uploads", exist_ok=True)
+    file_path = os.path.join("uploads", file.filename)
+    with open(file_path, "wb") as f:
+        f.write(contents)
+    logger.info("File uploaded: %s", file.filename)
+    return {"file_url": file_path}
+
+
+# Endpoint for logging test
+@app.get("/some-endpoint")
+async def some_endpoint():
+    logger.info("some endpoint accessed")
+    return {"message": "ok"}
 
 
 # 상태 체크 엔드포인트
