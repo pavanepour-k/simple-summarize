@@ -10,7 +10,7 @@ def test_summarize_short():
         "option": "short",
         "style": "general"
     }
-    response = client.post("/summarize", json=data)
+    response = client.post("/summarize", json=data, headers={"Authorization": "Bearer valid_token"})
     assert response.status_code == 200
     assert "summary_text" in response.json()
 
@@ -21,7 +21,7 @@ def test_summarize_medium():
         "option": "medium",
         "style": "general"
     }
-    response = client.post("/summarize", json=data)
+    response = client.post("/summarize", json=data, headers={"Authorization": "Bearer valid_token"})
     assert response.status_code == 200
     assert "summary_text" in response.json()
 
@@ -32,6 +32,6 @@ def test_summarize_long():
         "option": "long",
         "style": "general"
     }
-    response = client.post("/summarize", json=data)
+    response = client.post("/summarize", json=data, headers={"Authorization": "Bearer valid_token"})
     assert response.status_code == 200
     assert "summary_text" in response.json()

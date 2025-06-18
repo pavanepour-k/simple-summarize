@@ -8,6 +8,7 @@ def test_integration():
     response = client.post(
         "/summarize", 
         json={"content": "This is a test sentence for integration.", "option": "medium", "style": "problem_solver"}
+        ,headers={"Authorization": "Bearer valid_token"}
     )
     assert response.status_code == 200
     assert "summary" in response.json()
