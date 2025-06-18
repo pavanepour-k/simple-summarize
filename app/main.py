@@ -97,7 +97,17 @@ app.include_router(admin_router)  # Admin router includes its own prefix
 
 # Simple summarize endpoint for testing purposes
 @app.post("/summarize")
-async def summarize(data: dict):
+async def summarize(request: Request):
+    content_type = request.headers.get("Content-Type", "application/json")
+    if "application/json" not in content_type:
+        return JSONResponse(
+            status_code=415,
+            content={
+                "detail": "Unsupported file type. Allowed formats: .pdf, .docx, .txt, .md"
+            },
+        )
+
+    data = await request.json()
     text = data.get("content", "")
     summary = text[:50]
     logger.info("/summarize endpoint called")

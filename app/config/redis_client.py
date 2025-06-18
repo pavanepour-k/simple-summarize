@@ -1,8 +1,14 @@
-import redis.asyncio as redis  # 비동기 Redis 클라이언트 사용
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from app.utils.error_handler import raise_http_exception
 from app.config.settings import settings
+
+try:
+    import redis.asyncio as redis  # Async Redis client
+except Exception as exc:  # pragma: no cover - optional dependency
+    redis = None
+    logging.getLogger(__name__).warning("redis library not available: %s", exc)
 
 
 class RedisClient:
@@ -22,6 +28,8 @@ class RedisClient:
 
     async def _initialize_redis(self):
         # Initialize Redis connection pool with optimal settings
+        if redis is None:
+            raise_http_exception("Redis library not installed", code=500)
         try:
             self._pool = redis.ConnectionPool(
                 host=settings.REDIS_HOST,
@@ -39,8 +47,13 @@ class RedisClient:
 
     def get_connection(self):
         # Get a Redis connection from the pool
+        if redis is None:
+            raise_http_exception("Redis library not installed", code=500)
+
         if not self._pool:
-            raise_http_exception("Redis connection pool not initialized", code=500)
+            raise_http_exception(
+                "Redis connection pool not initialized", code=500
+            )
         return redis.Redis(connection_pool=self._pool)
 
     @asynccontextmanager
@@ -57,6 +70,8 @@ class RedisClient:
 
     async def execute(self, command, *args):
         # Execute a Redis command with proper error handling
+        if redis is None:
+            raise_http_exception("Redis library not installed", code=500)
         async with self.get_client() as client:
             try:
                 return client.execute_command(command, *args)
@@ -65,6 +80,8 @@ class RedisClient:
 
     async def retry_command(self, command, *args, retries=3, delay=1):
         # Execute a Redis command with retry logic and exponential backoff
+        if redis is None:
+            raise_http_exception("Redis library not installed", code=500)
         attempt = 0
         while attempt < retries:
             try:
