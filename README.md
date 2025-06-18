@@ -113,11 +113,11 @@
 
 ### Caching & Data Storage
 
-- **Redis (v4.0.2)**: A high-performance in-memory data store used for caching and managing connection pools.
+ - **Redis (v6.0.0)**: A high-performance in-memory data store used for caching and managing connection pools.
 
 ### HTTP Requests & External Communication
 
-- **requests (v2.28.2)**: A simple HTTP library for making requests to external services or APIs.
+ - **requests (v2.32.3)**: A simple HTTP library for making requests to external services or APIs.
 
 ### Environment Configuration & Dependency Management
 
