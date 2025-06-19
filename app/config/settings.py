@@ -33,21 +33,43 @@ class Settings(BaseSettings):
         "development", env="ENVIRONMENT"
     )  # Default is "development"
 
-    @property
-    def PRIVATE_KEY(self):
-        # Method to read the private key from PRIVATE_KEY_PATH
-        if os.path.exists(self.PRIVATE_KEY_PATH):
-            with open(self.PRIVATE_KEY_PATH, "r") as f:
-                return f.read().strip()
-        raise ValueError(f"Private key file not found at {self.PRIVATE_KEY_PATH}")
+    _private_key_cache: str | None = None
+    _public_key_cache: str | None = None
+
+    def PRIVATE_KEY(self) -> str:
+        """Return the loaded private key.
+
+        The key is read once from ``PRIVATE_KEY_PATH`` and cached for subsequent
+        calls. A ``ValueError`` is raised if the file does not exist or is empty.
+        """
+        if self._private_key_cache is None:
+            if not os.path.isfile(self.PRIVATE_KEY_PATH):
+                raise ValueError(
+                    f"Private key file not found at {self.PRIVATE_KEY_PATH}"
+                )
+            with open(self.PRIVATE_KEY_PATH, "r", encoding="utf-8") as f:
+                self._private_key_cache = f.read().strip()
+            if not self._private_key_cache:
+                raise ValueError("Private key file is empty")
+        return self._private_key_cache
 
     @property
-    def PUBLIC_KEY(self):
-        # Method to read the public key from PUBLIC_KEY_PATH
-        if os.path.exists(self.PUBLIC_KEY_PATH):
-            with open(self.PUBLIC_KEY_PATH, "r") as f:
-                return f.read().strip()
-        raise ValueError(f"Public key file not found at {self.PUBLIC_KEY_PATH}")
+    def PUBLIC_KEY(self) -> str:
+        """Return the loaded public key.
+
+        The key is loaded from ``PUBLIC_KEY_PATH`` only once. A ``ValueError``
+        is raised if the file is missing or empty.
+        """
+        if self._public_key_cache is None:
+            if not os.path.isfile(self.PUBLIC_KEY_PATH):
+                raise ValueError(
+                    f"Public key file not found at {self.PUBLIC_KEY_PATH}"
+                )
+            with open(self.PUBLIC_KEY_PATH, "r", encoding="utf-8") as f:
+                self._public_key_cache = f.read().strip()
+            if not self._public_key_cache:
+                raise ValueError("Public key file is empty")
+        return self._public_key_cache
 
     class Config:
         # Load environment variables from the .env file
