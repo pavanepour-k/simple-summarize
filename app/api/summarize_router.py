@@ -66,14 +66,29 @@ async def _validate_and_summarize(
     api_key: str,
     summarizer: SummarizerService,
 ):
+    if not content or not content.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Content cannot be empty")
+
     try:
         # Detect language and apply summarization
-        summary = await summarizer.summarize_async(content, option, style)
-
+        language = "en"
+        summary_text, language, style_prompt = await summarizer.summarize(
+            content, language, style, option
+        )
         # Record usage statistics
-        await record_summary_usage(api_key, summary.language, summary.style)
+        await record_summary_usage(api_key, language, style.value)
 
-        return summary
+        return SummaryOutput.create(
+            summary=summary_text,
+            length=option.value,
+            input_length=len(content),
+            language=language,
+            style=style.value,
+            role="user",
+            style_prompt=style_prompt,
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
