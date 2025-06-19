@@ -19,22 +19,22 @@ VALID_API_KEYS: List[str] = ["valid_api_key_1", "valid_api_key_2"]
 
 # API key verification
 def verify_api_key(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    # Extract api_key and role from JWT for verification
+    # Validate the provided JWT and return the API key
     payload = verify_jwt(credentials.credentials, PUBLIC_KEY)
     api_key = payload.get("api_key")
     role = payload.get("role")
 
-    if not api_key or api_key != API_KEY:
+    if not api_key:
         raise_http_exception(
             "Invalid or missing API key", code=status.HTTP_401_UNAUTHORIZED
         )
 
-    if api_key not in VALID_API_KEYS:
+    if api_key != API_KEY or api_key not in VALID_API_KEYS:
         raise_http_exception(
             "API key is not authorized", code=status.HTTP_401_UNAUTHORIZED
         )
 
-    if role not in ["user", "admin"]:  # Example role validation
+    if role not in ["user", "admin"]:
         raise_http_exception("Invalid role", code=status.HTTP_403_FORBIDDEN)
 
     return api_key
