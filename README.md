@@ -284,3 +284,7 @@ It also covers the importance of security when handling environment variables an
 ---
 
 This **README** file is designed to help developers quickly understand how to set up and use the API while also providing security best practices and licensing information.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
