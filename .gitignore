@@ -31,6 +31,8 @@ coverage.xml
 .cache/
 .pytest_cache/
 app/test/*
+pytest.ini
+setup.cfg
 
 # 빌드 결과물
 build/
