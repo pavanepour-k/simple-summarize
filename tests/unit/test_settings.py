@@ -2,7 +2,7 @@ import os
 import tempfile
 import pytest
 from pathlib import Path
-from settings import Settings, load_settings
+from config.settings import Settings, load_settings
 
 # --- Fixture to create dummy key files ---
 @pytest.fixture
