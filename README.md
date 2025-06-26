@@ -121,16 +121,15 @@ file=<your_file.pdf or .docx>
 
 ### License
 
-<br>
-This project is licensed under the MIT License.
+This project is licensed under the MIT License.  
 See [LICENSE](LICENSE) for full terms.
-<br><br>
+
+<br>
 
 ---
 
 ### Contributing
 
-<br>
 Feel free to fork the repo, open issues, or submit pull requests.  
 All contributions are made under the MIT License.
 <br> <br>
