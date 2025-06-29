@@ -1,4 +1,0 @@
-[mypy]
-files = app/
-disallow_untyped_calls = True
-disallow_untyped_defs = True
