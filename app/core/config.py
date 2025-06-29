@@ -62,9 +62,21 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=True
     )
+
+    EMBEDDING_MODEL_TYPE: str = "huggingface"
+    EMBEDDING_MODEL_PATH: str = "facebook/bart-large-cnn"
+    EMBEDDING_MODEL_PARAMS: Dict[str, Any] = {}
     
     _key_cache: Dict[str, str] = {}
     
+    @field_validator("EMBEDDING_MODEL_TYPE")
+    @classmethod
+    def validate_model_type(cls, v: str) -> str:
+        allowed = ["huggingface", "dummy"]
+        if v not in allowed and "." not in v:
+            raise ValueError(f"Model type must be one of {allowed} or a module path")
+        return v
+
     @field_validator("MAX_FILE_SIZE_MB")
     @classmethod
     def validate_file_size(cls, v: int) -> int:
