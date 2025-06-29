@@ -1,63 +1,77 @@
+"""Model loading service."""
+from __future__ import annotations
+
 import json
 import logging
-from transformers import pipeline
-from app.utils.utils import load_model
-from functools import lru_cache
 import os
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-# Initialize logger
+from app.utils.error_handler import InternalServerError
+
 logger = logging.getLogger(__name__)
 
 
 class ModelLoader:
-    # Singleton class to manage and cache language models
-
-    _instance = None
-    _model_config = None
-    _selected_model_key = None    
-
-    def __new__(cls, *args, **kwargs):
-        # Ensure that only one instance of ModelLoader exists
-        if cls._instance is None:
-            cls._instance = super().__new__(cls, *args, **kwargs)
-            cls._instance._load_model_config()  # Load model config when the first instance is created
-        return cls._instance
-
-    def _load_model_config(self):
-        # Load model config from `models.json`
+    """Language model loader with caching."""
+    
+    def __init__(self, config_path: Optional[str] = None):
+        self._config_path = config_path or os.getenv(
+            "MODEL_CONFIG_PATH", "app/config/models.json"
+        )
+        self._model_config = self._load_config()
+        self._selected_model = os.getenv("MODEL_NAME")
+    
+    def _load_config(self) -> Dict[str, str]:
+        """Load model configuration."""
         try:
-            # Use environment variables to set the config path
-            config_path = os.getenv("MODEL_CONFIG_PATH", "config/models.json")
-            with open(config_path, "r", encoding="utf-8") as f:
-                self._model_config = json.load(f)
-
-            # Read specific model key from environment variable
-            self._selected_model_key = os.getenv("MODEL_NAME")
-            if self._selected_model_key and self._selected_model_key not in self._model_config:
-                logger.warning(
-                    f"Model key '{self._selected_model_key}' not found in configuration."
-                )
-                self._selected_model_key = None
-
-            logger.info("Successfully loaded model configuration.")
+            path = Path(self._config_path)
+            if not path.exists():
+                logger.error(f"Model config not found: {path}")
+                return {"en": "facebook/bart-large-cnn"}
+            
+            with path.open("r", encoding="utf-8") as f:
+                return json.load(f)
         except Exception as e:
-            logger.error(f"Failed to load model configuration: {str(e)}")
-            raise Exception("Failed to load model configuration.")
-
+            logger.error(f"Failed to load model config: {e}")
+            return {"en": "facebook/bart-large-cnn"}
+    
     @lru_cache(maxsize=None)
-    def get_pipeline(self, lang: str):
-        # Return the summarization pipeline for the requested language
-        model_key = self._selected_model_key or lang
-        model_name = self._model_config.get(model_key, self._model_config.get("en"))
-
+    def get_pipeline(self, language: str) -> Any:
+        """Get model pipeline for language.
+        
+        Args:
+            language: Language code
+            
+        Returns:
+            Model pipeline
+            
+        Raises:
+            InternalServerError: If model loading fails
+        """
+        model_key = self._selected_model or language
+        model_name = self._model_config.get(
+            model_key, self._model_config.get("en")
+        )
+        
         try:
-            return load_model(model_name)
+            return self._load_model(model_name)
         except Exception as e:
-            logger.error(f"Failed to load model {model_name}: {str(e)}")
-            fallback_model_name = self._model_config.get("en")
-            logger.info(f"Falling back to default model: {fallback_model_name}")
-            return load_model(fallback_model_name)
-
-
-# Create ModelLoader singleton instance
-model_loader = ModelLoader()
+            logger.error(f"Failed to load {model_name}: {e}")
+            if model_key != "en":
+                logger.info("Falling back to English model")
+                return self._load_model(self._model_config["en"])
+            raise InternalServerError("Failed to load model") from e
+    
+    def _load_model(self, model_name: str) -> Any:
+        """Load model implementation."""
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
+        
+        try:
+            model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            return pipeline("summarization", model=model, tokenizer=tokenizer)
+        except Exception as e:
+            logger.error(f"Model loading failed: {e}")
+            raise
