@@ -5,7 +5,7 @@ description = "FastAPI-based text summarization API"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "pavanepour.k", email = "pavanepour.k@example.com" }]
+authors = [{ name = "pavanepour.k", email = "pavanepour.k@outlook.com" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
