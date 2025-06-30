@@ -1,121 +1,128 @@
 # 📄 SimpleSummarize
 
-**SimpleSummarize** is a FastAPI-based web API for quick and flexible text summarization. It supports both extractive and abstractive summaries, multiple summarization styles, and file uploads (PDF, DOCX). Designed with performance and modularity in mind.
-<br><br>
+**SimpleSummarize** is a modular, FastAPI-based text summarization API.  
+This project is being rebuilt from scratch to ensure better maintainability, modularity, and modern development practices.
+
+> ⚠️ **Note**: This is a clean reinitialization of the original `SimpleSummarize` project. Features are being reimplemented step-by-step.
 
 ---
 
-## ✨ Key Features
+## 🚧 In Progress
 
--  **Text Summarization**: Extractive & abstractive methods
--  **Style Options**: `general`, `problem_solver`, `emotion_focused`
--  **File Upload Support**: Summarize from PDF or DOCX
--  **Multilingual**: English, Korean, Japanese (more planned)
--  **Secure API Access**: JWT & API Key authentication
--  **Admin API**: Usage stats and logs for administrators
--  **Rate Limiting**: Role-based usage control
--  **Debug Mode Support**: Optional visibility of prompt data
-<br><br>
+- ✅ Clean project scaffolding with FastAPI
+- ⏳ Core API: basic text summarization
+- ⏳ File upload support (PDF/DOCX)
+- ⏳ Multilingual support
+- ⏳ Authentication (JWT/API Key)
+- ⏳ Admin/statistics API
+- ⏳ Rate limiting middleware
+- ⏳ Deployment, CI, testing setup
 
 ---
 
-## Getting Started
+## ✨ Planned Features
 
-### 1. Clone the Repository
-<br>
+- **Text Summarization**: Extractive & abstractive methods
+- **Style Options**: `general`, `problem_solver`, `emotion_focused`
+- **File Upload**: Summarize content from PDF and DOCX files
+- **Multilingual**: English, Korean, Japanese (more to come)
+- **Secure API**: JWT-based and API key access
+- **Admin Panel**: Usage stats, rate limits, logs
+- **Debug Mode**: Developer-visible prompt/logging options
+
+---
+
+## ⚙️ Getting Started
+
+### 1. Clone and set up the project
 
 ```bash
 git clone https://github.com/your-username/simple-summarize.git
 cd simple-summarize
+
 ```
 <br>
 
-### 2. Set Up Environment
+### 2. Create and activate a virtual environment
 <br>
 
 ```
 python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+<br>
+
+### 3. Install dependencies
+<br>
+
+```
 pip install -r requirements.txt
 ```
 <br>
 
-### 3. Configure .env
+### 4. Create a .env file
+
 <br>
-Create a .env file with:
-<br>
+Start with:
 
 ```
 API_KEY=your-api-key
 DEBUG_MODE=True
 API_ROLE=user
-MAX_FILE_SIZE=50MB
 ```
 <br>
 
-### 4. Run the Server
+### 5. Run the server
+
+<br>
+```
+uvicorn app.main:app --reload
+```
 <br>
 
-```
-uvicorn main:app --reload
-```
+Visit: http://127.0.0.1:8000/docs
+
+## 📦 Tech Stack
+
+| Purpose           | Stack                                          |
+| ----------------- | ---------------------------------------------- |
+| **Language**      | Python 3.10                                   |
+| **Framework**     | FastAPI + Uvicorn                              |
+| **Validation**    | Pydantic v2, python-dotenv                     |
+| **Security**      | JWT (python-jose), Cryptography                |
+| **File Handling** | PyMuPDF, python-docx (planned)                 |
+| **Utils**         | Custom logging, config, and exception handlers |
+
+
+
+
+## 📁 Documentation
+
 <br>
-Visit: http://127.0.0.1:8000
-<br><br>
 
-## Usage Examples
+| Doc                                             | Description                               |
+| ----------------------------------------------- | ----------------------------------------- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)    | Project architecture and module structure |
+| [docs/API\_REFERENCE.md](docs/API_REFERENCE.md) | REST API endpoints (in progress)          |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)        | Deployment guide and environment setup    |
 
-### Text Summarization
-```
-POST /summarize/text
-Content-Type: application/json
+<br>
 
-{
-  "content": "Your long text here...",
-  "style": "general"
-}
-```
+> You can also browse the API via /docs when the server is running.
 
 
-### File Upload
-```
-POST /summarize/file?style=general
-Content-Type: multipart/form-data
+## 🛡️ Security Practices
 
-file=<your_file.pdf or .docx>
-```
+<br>
+
+  - Never commit .env or sensitive credentials
+
+  - Use environment variables or secret managers in production
+
+  - JWT and API key authentication will be applied
+
+<br>
 ---
-
-
-
-## Security Best Practices
-
-
-- Store credentials (e.g., API_KEY, SECRET_KEY) in .env and do not commit this file.
-
-- For production, consider using secret managers (e.g., AWS Secrets Manager, Azure Key Vault).
-
-- JWT tokens are used for user authentication and access control.
-
----
-
-
-
-## ⚙️ Technology Stack
-
-| Category          | Stack                                      |
-| ----------------- | ------------------------------------------ |
-| **Language**      | Python 3.11                                |
-| **Framework**     | FastAPI, Uvicorn (ASGI server)             |
-| **Validation**    | Pydantic, Pydantic Settings, python-dotenv |
-| **Security**      | JWT via python-jose, Cryptography          |
-| **File Handling** | PyMuPDF, python-docx                       |
-| **Caching**       | Redis (via async connection pool)          |
-| **Utilities**     | requests, custom error/logging utils       |
-
-
----
-
 
 ## 🧾 Project Info
 
@@ -130,17 +137,6 @@ See [LICENSE](LICENSE) for full terms.
 
 ### Contributing
 
-Feel free to fork the repo, open issues, or submit pull requests.  
-All contributions are made under the MIT License.
+Contributions are welcome!
+Please fork the repo, open issues, or submit pull requests under the MIT License.
 <br> <br>
-
----
-
-### Docs
-
-The following documents are currently under preparation.  
-Links are placeholders and will be updated soon:
-
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Internal file/module structure *(Coming soon)*
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): Environment & production setup guide *(Coming soon)*
-- [docs/API_REFERENCE.md](docs/API_REFERENCE.md): Full API reference *(Coming soon — you can still access `/docs` in the meantime)*
