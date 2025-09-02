@@ -1,6 +1,6 @@
 # 📄 SimpleSummarize
 
-**SimpleSummarize** is a modular, FastAPI-based text summarization API.  
+**SimpleSummarize** is a modular, ForziumAPI-based text Summarizer.  
 This project is being rebuilt from scratch to ensure better maintainability, modularity, and modern development practices.
 
 > ⚠️ **Note**: This is a clean reinitialization of the original `SimpleSummarize` project. Features are being reimplemented step-by-step.
@@ -9,7 +9,7 @@ This project is being rebuilt from scratch to ensure better maintainability, mod
 
 ## 🚧 In Progress
 
-- ✅ Clean project scaffolding with FastAPI
+- ✅ Clean project scaffolding with ForziumAPI
 - ⏳ Core API: basic text summarization
 - ⏳ File upload support (PDF/DOCX)
 - ⏳ Multilingual support
@@ -87,7 +87,7 @@ Visit: http://127.0.0.1:8000/docs
 | Purpose           | Stack                                          |
 | ----------------- | ---------------------------------------------- |
 | **Language**      | Python 3.10                                   |
-| **Framework**     | FastAPI + Uvicorn                              |
+| **Framework**     | ForziumAPI + Uvicorn                              |
 | **Validation**    | Pydantic v2, python-dotenv                     |
 | **Security**      | JWT (python-jose), Cryptography                |
 | **File Handling** | PyMuPDF, python-docx (planned)                 |
@@ -140,3 +140,4 @@ See [LICENSE](LICENSE) for full terms.
 Contributions are welcome!
 Please fork the repo, open issues, or submit pull requests under the MIT License.
 <br> <br>
+
